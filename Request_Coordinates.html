@@ -259,7 +259,6 @@
 
         set_km_vars(coordinates);
 
-
         set_km_var('Coord_History', JSON.stringify(
           inputHistory
             .persistEphemeral()
@@ -295,7 +294,11 @@
       });
 
       const set_km_var = (key, value) => {
-        const serialized = value == null ? '' : String(value);
+        let serialized = value == null ? '' : value;
+
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          serialized = value.toFixed('.000260417'.length - 1);
+        }
 
         var_store.set(key, serialized);
         if (window.KeyboardMaestro) {
@@ -523,14 +526,15 @@
       };
 
       const normalize_coords = (coords) => {
+        const c = x => Math.min(1, Math.max(0, x));
         return [
           [
-            Math.min(coords[0][0], coords[1][0]),
-            Math.min(coords[0][1], coords[1][1]),
+            c(Math.min(coords[0][0], coords[1][0])),
+            c(Math.min(coords[0][1], coords[1][1])),
           ],
           [
-            Math.max(coords[0][0], coords[1][0]),
-            Math.max(coords[0][1], coords[1][1]),
+            c(Math.max(coords[0][0], coords[1][0])),
+            c(Math.max(coords[0][1], coords[1][1])),
           ]
         ];
       }
