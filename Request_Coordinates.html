@@ -137,6 +137,7 @@
 
       const input = document.querySelector('#main-input');
       const preview = document.querySelector('#preview');
+      const preview_inner = document.querySelector('#preview_inner');
       const form = document.querySelector('#form');
       const error_el = document.querySelector('#error');
       const popup = document.querySelector('#popup');
@@ -167,20 +168,29 @@
         // Clear out the variables
         set_km_vars([[null, null], [null, null]]);
 
-        // TODO: use usable screen (excluding menu bar + dock)
-        //  and store the margins on each side, so we can render appropriately
-        //  e.g. inset doesn't work properly as it cuts off e.g. 10px from the bottom
-        //  but 10px from the top does nothing as y1=0 is the same as y1=15
+        // TODO: implement side margins, for side positioned docks
         if (window.KeyboardMaestro) {
           screen = {
-            width: window.KeyboardMaestro.Calculate('SCREEN(Front, WIDTH)'),
-            height: window.KeyboardMaestro.Calculate('SCREEN(Front, HEIGHT)'),
+            width: window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, WIDTH)'),
+            height: window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, HEIGHT)'),
+            full_width: window.KeyboardMaestro.Calculate('SCREEN(Front, WIDTH)'),
+            full_height: window.KeyboardMaestro.Calculate('SCREEN(Front, HEIGHT)'),
+            margin: {},
           }
+
+          screen.margin_top = window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, TOP)');
+          screen.margin_bottom = window.KeyboardMaestro.Calculate('SCREEN(Front, BOTTOM)') -
+            window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, BOTTOM)');
         } else {
           // emulate the screen size when not in KM
-          // screen = { width: 1920, height: 1080 };
-          screen = { width: 2560, height: 1440 };
-          // screen = { width: 3840, height: 2160 };
+          // screen = { full_width: 1920, full_height: 1080 };
+          screen = { full_width: 2560, full_height: 1440 };
+          // screen = { full_width: 3840, full_height: 2160 };
+
+          screen.margin_top = 20;
+          screen.margin_bottom = 0;
+          screen.width = screen.full_width;
+          screen.height = screen.full_height - screen.margin_top - screen.margin_bottom;
         }
 
         inputHistory = new InputHistory(get_km_var('Coord_History'));
@@ -207,6 +217,9 @@
             update({});
           }
         }, false);
+
+        preview_inner.style.marginTop = screen.margin_top / screen.full_height * 100 + '%';
+        preview_inner.style.marginBottom = screen.margin_bottom / screen.full_height * 100 + '%';
 
         update({});
         input.select();
@@ -564,7 +577,6 @@
       }
 
       const fraction_to_coordinates = (num, denom) => {
-
         if (!num) {
           throw new Error(`The numerator must be between 1 and 9.`);
         }
@@ -964,7 +976,6 @@
       flex: 1 1 auto;
       align-self: stretch;
       justify-self: stretch;
-      margin: 0.5em;
     }
 
     #preview_contents {
