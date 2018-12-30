@@ -167,6 +167,10 @@
         // Clear out the variables
         set_km_vars([[null, null], [null, null]]);
 
+        // TODO: use usable screen (excluding menu bar + dock)
+        //  and store the margins on each side, so we can render appropriately
+        //  e.g. inset doesn't work properly as it cuts off e.g. 10px from the bottom
+        //  but 10px from the top does nothing as y1=0 is the same as y1=15
         if (window.KeyboardMaestro) {
           screen = {
             width: window.KeyboardMaestro.Calculate('SCREEN(Front, WIDTH)'),
@@ -325,7 +329,17 @@
           }
 
           if (first === 'i' || first === 'I') {
-            ops.push(['Inset']);
+            ops.push(['Inset', true]);
+            continue;
+          }
+
+          if (first === 'f') {
+            ops.push(['FlipX', true]);
+            continue;
+          }
+
+          if (first === 'F') {
+            ops.push(['FlipY', true]);
             continue;
           }
 
@@ -385,7 +399,6 @@
 
         let coordinates = null;
 
-        console.log([...buf.items])
 
         let item;
         if (buf.peek_type() === 'EdgeOffset' || buf.items.length === 0) {
@@ -395,7 +408,6 @@
             offsets.push(item);
           }
 
-          console.log(offsets)
           coordinates = num_sequence_to_coordinates(offsets);
         } else if (buf.peek_type() === 'Fraction') {
           const [num, denom] = buf.take_value();
@@ -419,6 +431,10 @@
             const deg = buf.take_value();
 
             coordinates = rotate_coordinates_percent(coordinates, deg);
+          } else if (buf.take_value('FlipX')) {
+            coordinates = flip_coordinates_x(coordinates);
+          } else if (buf.take_value('FlipY')) {
+            coordinates = flip_coordinates_y(coordinates);
           } else {
             throw new Error(`Unexpected token ${buf.take(1)}`);
           }
@@ -436,6 +452,20 @@
         return normalize_coords([
           [x1, y1],
           [x2, y2],
+        ]);
+      };
+
+      const flip_coordinates_x = ([[x1, y1], [x2, y2]]) => {
+        return normalize_coords([
+          [1 - x2, y1],
+          [1 - x1, y2],
+        ]);
+      };
+
+      const flip_coordinates_y = ([[x1, y1], [x2, y2]]) => {
+        return normalize_coords([
+          [x1, 1 - y2],
+          [x2, 1 - y1],
         ]);
       };
 
