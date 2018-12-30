@@ -7,6 +7,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <!--
+  TODO: these numbers are outdated. Update them.
+
   The UI is fully responsive, but an aspect ratio of 7.25:5 (1.45) works well. Sizes at 1/3 height:
   1080:
     <body data-kmwidth="522" data-kmheight="360">
@@ -15,7 +17,7 @@
   4k:
     <body data-kmwidth="1044" data-kmheight="720">
 -->
-<body data-kmwidth="1044" data-kmheight="720">
+<body data-kmwidth="1120" data-kmheight="720">
   <style>
       /* Theme settings; modify as you like */
       :root {
@@ -32,33 +34,36 @@
       /* Light theme, inherits from above */
       [data-theme="light"] {
         --background: #f8f8f8;
-        --background-stripe: #b5c4b6;
+        --background-stripe: hsl(244, 17.7%, 81%);
         --moderate-contrast: rgba(100, 100, 100, 0.5);
         --foreground: #444444;
-        --background-alt: #90d09c;
-        --foreground-alt: #00aeed;
-        --foreground-alt-muted: #8ea0bb;
+        --background-alt: #7BC2DE;
+        --foreground-alt: #8F89E4;
+        --foreground-alt-muted: #BCB8F3;
       }
 
         /* Variables for math things */
       :root {
+        /* We override this later in the JS, so just using a reasonable default for now */
+        --screen-aspect: calc(16 / 9);
+
         /* our base is 600px wide viewport -> 16px font, so that's a scale of 37.5 */
         --font-scale: 37.5;
 
         /* We want the preview to maintain a 16:10 aspect ratio */
-        --preview-space: calc(100vmin - 2em);
+        --preview-space: calc(100vmin - 3em);
         --preview-width: var(--preview-space);
-        --preview-height: calc(var(--preview-space) * (10 / 16));
+        --preview-height: calc(var(--preview-space) / var(--screen-aspect));
 
         --input-scale: 2.2;
       }
 
       /* If the viewport is in landscape, scale the preview on the other axis */
-      @media screen and (min-aspect-ratio: 10/7) {
+      @media screen and (min-aspect-ratio: 200/135) {
         :root {
           --preview-space: calc(100vh - 6.4em);
           --preview-height: var(--preview-space);
-          --preview-width: calc(var(--preview-space) / (10 / 16));
+          --preview-width: calc(var(--preview-space) / (1 / var(--screen-aspect)));
         }
       }
 
@@ -112,6 +117,7 @@
       }
     </style>
   <section id="preview">
+    <div id="preview_osx_bar"></div>
     <div id="preview_inner">
       <div id="preview_contents">
           <div class="menu_bar">
@@ -138,6 +144,7 @@
       const input = document.querySelector('#main-input');
       const preview = document.querySelector('#preview');
       const preview_inner = document.querySelector('#preview_inner');
+      const preview_osx_bar = document.querySelector('#preview_osx_bar');
       const form = document.querySelector('#form');
       const error_el = document.querySelector('#error');
       const popup = document.querySelector('#popup');
@@ -176,7 +183,7 @@
             full_width: window.KeyboardMaestro.Calculate('SCREEN(Front, WIDTH)'),
             full_height: window.KeyboardMaestro.Calculate('SCREEN(Front, HEIGHT)'),
             margin: {},
-          }
+          };
 
           screen.margin_top = window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, TOP)');
           screen.margin_bottom = window.KeyboardMaestro.Calculate('SCREEN(Front, BOTTOM)') -
@@ -218,8 +225,20 @@
           }
         }, false);
 
-        preview_inner.style.marginTop = screen.margin_top / screen.full_height * 100 + '%';
-        preview_inner.style.marginBottom = screen.margin_bottom / screen.full_height * 100 + '%';
+        {
+          // We can't use margins because they'd be percentags of width
+          const mt_p = screen.margin_top / screen.full_height;
+          const mb_p = screen.margin_bottom / screen.full_height;
+          const both = mt_p + mb_p;
+          preview_inner.style.position = 'relative';
+          preview_inner.style.height = (1 - both) * 100 + '%';
+          preview_osx_bar.style.height =  mt_p * 100 + '%';
+
+          // Let's make sure we have the right aspect ratio; otherwise things won't work correctly.
+          const full_aspect = screen.full_width / screen.full_height;
+
+          document.documentElement.style.setProperty('--screen-aspect', full_aspect);
+        }
 
         update({});
         input.select();
@@ -366,6 +385,16 @@
             continue;
           }
 
+          if (first === 's') {
+            ops.push(['SquareShort', true]);
+            continue;
+          }
+
+          if (first === 'S') {
+            ops.push(['SquareLong', true]);
+            continue;
+          }
+
           const next = buf.peek_at(0);
 
           if (is_digit(first)) {
@@ -385,7 +414,7 @@
                 return { index: buf.offset - 1, error: `Expected a digit after the '.'` };
               }
 
-              ops.push(['EdgeOffset', parseFloat(first + '.' + rest)]);
+              ops.push(['EdgeOffset', parseFloat(first + '.' + dec)]);
             } else {
               ops.push(['EdgeOffset', parseFloat(first)]);
             }
@@ -424,6 +453,12 @@
           const [num, denom] = buf.take_value();
 
           coordinates = fraction_to_coordinates(num, denom);
+        } else {
+          // e.g. allows 'i' to be synonymous with '1i'
+          return parsed_to_coordinates([
+            ['EdgeOffset', 1],
+            ...parsed,
+          ]);
         }
 
         while (!buf.is_end()) {
@@ -434,8 +469,12 @@
               count += 1;
             }
 
-            const unit = 10;
-            const pixels = unit * (1.5 ** count);
+            // If you want to play with the base or exponent... in python:
+            //   >>> b = 20.0; exp = 2; [int(b * exp ** i) for i in range(0, 5)]
+            //   [20, 40, 80, 160, 320]
+            const screen_y_percent = 20 / 1080;
+            const unit = screen_y_percent * screen.full_height;
+            const pixels = unit * (2 ** count);
 
             coordinates = inset_coordinates(coordinates, ...pixels_to_percent(pixels));
           } else if (buf.peek_type() === 'Rotate') {
@@ -449,6 +488,9 @@
           } else {
             throw new Error(`Unexpected token ${buf.take(1)}`);
           }
+
+          // TODO: implemnt SquareShort: reduce the long side until the screen pixels are a square
+          // TODO: implemnt SquareLong: expand the short side until the screen pixels are a square
         }
 
         return coordinates;
@@ -525,7 +567,12 @@
 
         // With just one number, we'll treat e.g. '4' as '44', hitting the following conditional
         if (count === 1) {
-          return num_sequence_to_coordinates([items[0], items[0]]);
+          if (items[0] < 5) {
+            return num_sequence_to_coordinates([items[0], items[0]]);
+          } else {
+            // but don't make a 0 sized shape
+            return num_sequence_to_coordinates([items[0], 1, 1, 1]);
+          }
         }
 
         /* With two numbers, copy the offset from the top left to the bottom right,
@@ -538,8 +585,8 @@
               scale_number(items[1]),
             ],
             [
-              1 - scale_number(items[0]),
-              1 - scale_number(items[1]),
+              1 - scale_number(items[0] < 5 ? items[0] : 1),
+              1 - scale_number(items[1] < 5 ? items[1] : 1),
             ],
           ];
         }
@@ -556,7 +603,7 @@
             ],
             [
               1 - scale_number(items[2]),
-              1 - scale_number(items[1]),
+              1 - scale_number(items[1] < 5 ? items[1] : 1),
             ],
           ];
         }
@@ -961,6 +1008,7 @@
     #preview {
       width: var(--preview-width);
       height: var(--preview-height);
+      overflow: hidden;
       flex: 0 0 auto;
       display: flex;
       flex-direction: column;
@@ -971,9 +1019,16 @@
       border-radius: 0.5em;
     }
 
+    #preview_osx_bar {
+      --bg-color-1: hsla(0, 0%, 65%, 0.5);
+      background: linear-gradient(0, var(--bg-color-1) 0%, var(--bg-color-1) 100%), var(--background);
+
+      box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.3), 0 0 1.5px 2px rgba(220, 220, 220, 0.7);
+    }
+
     #preview_inner {
       position: relative;
-      flex: 1 1 auto;
+      flex: 0 1 auto;
       align-self: stretch;
       justify-self: stretch;
     }
@@ -1097,7 +1152,7 @@
     }
 
     :root {
-      --bg-pattern: repeating-linear-gradient(45deg, transparent 1em, var(--background-stripe) 1em, var(--background-stripe) 1.6em, transparent 1.6em, transparent 2.2em);
+      --bg-pattern: repeating-linear-gradient(45deg, transparent 1em, var(--background-stripe) 1em, var(--background-stripe) 1.3333em, transparent 1.3333em, transparent 2em);
     }
   </style>
 </body>
