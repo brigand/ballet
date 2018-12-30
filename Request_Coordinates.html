@@ -358,12 +358,12 @@
           if (is_digit(first)) {
             if (next === '/') {
               buf.take(1);
-              const demon = buf.take(1);
-              if (!is_digit(div)) {
+              const denom = buf.take(1);
+              if (!is_digit(denom)) {
                 return { index: buf.offset - 1, error: `Expected a digit after the /` };
               }
 
-              ops.push(['Fraction', [parseFloat(first), parseFloat(demon)]]);
+              ops.push(['Fraction', [parseFloat(first), parseFloat(denom)]]);
             } else if (next === '.') {
               buf.take(1);
               const dec = buf.take(1);
@@ -399,8 +399,6 @@
 
         let coordinates = null;
 
-
-        let item;
         if (buf.peek_type() === 'EdgeOffset' || buf.items.length === 0) {
           let item;
           let offsets = [];
@@ -412,7 +410,7 @@
         } else if (buf.peek_type() === 'Fraction') {
           const [num, denom] = buf.take_value();
 
-          coordinates = fraction_to_coordinates(num, demon);
+          coordinates = fraction_to_coordinates(num, denom);
         }
 
         while (!buf.is_end()) {
@@ -440,7 +438,7 @@
           }
         }
 
-        return coordinates
+        return coordinates;
         // TODO: implement inset
         // TODO: implement rotate
         // TODO: implement flip
@@ -550,40 +548,6 @@
           ];
         }
 
-        const fraction_to_coordinates = (num, denom) => {
-          const by_denom = {
-            1: [
-              [0, 0, 1, 1]
-            ],
-            2: [
-              // horizontal 1:1
-              [0, 0, 1/2, 1],
-              [1/2, 0, 2/2, 1],
-            ],
-            3: [
-              // horizontal 1:1:1
-              [0, 0, 1/3, 1],
-              [1/3, 0, 2/3, 1],
-              [2/3, 0, 3/3, 1],
-            ],
-            4: [
-              // 2x2 grid
-              [0, 0, 1/2, 1/2], // top left
-              [1/2, 0, 2/2, 1/2], // top right
-              [1/2, 1/2, 2/2, 2/2], // bottom right
-              [0, 1/2, 1/2, 2/2], // bottom left
-            ],
-            6: {
-              // 3 wide, 2 tall grid
-              // TODO: implement this
-            }
-          };
-
-          // TODO: handle invalid denom with an error
-          // TODO: implement e.g. 3/2 being 1/2 + rotate
-          // TODO: return coordinates
-        };
-
         // perfect case, where we have ((x, y), (x, y))
         if (count === 4) {
           return [
@@ -598,6 +562,62 @@
           ];
         }
       }
+
+      const fraction_to_coordinates = (num, denom) => {
+
+        if (!num) {
+          throw new Error(`The numerator must be between 1 and 9.`);
+        }
+
+        const by_denom = {
+          1: [
+            [0, 0, 1, 1]
+          ],
+          2: [
+            // horizontal 1:1
+            [0, 0, 1/2, 1],
+            [1/2, 0, 2/2, 1],
+          ],
+          3: [
+            // horizontal 1:1:1
+            [0, 0, 1/3, 1],
+            [1/3, 0, 2/3, 1],
+            [2/3, 0, 3/3, 1],
+          ],
+          4: [
+            // 2x2 grid
+            [0, 0, 1/2, 1/2], // top left
+            [1/2, 0, 2/2, 1/2], // top right
+            [1/2, 1/2, 2/2, 2/2], // bottom right
+            [0, 1/2, 1/2, 2/2], // bottom left
+          ],
+          6: {
+            // 3 wide, 2 tall grid
+            // TODO: implement this
+          }
+        };
+
+        const values = by_denom[denom];
+        // TODO: handle invalid denom with an error
+
+        if (!values) {
+          throw new Error(`Only the denominators (${by_denom.join(',')}) are supported.`);
+        }
+
+        const index = (num - 1) % values.length;
+        const [x1, y1, x2, y2] = values[index];
+
+        let coords = [[x1, y1], [x2, y2]];
+
+        // 3/2 is short for 1/2R
+        const excess = Math.floor((num - 1) / denom);
+
+        if (excess) {
+          coords = rotate_coordinates_percent(coords, excess * 90);
+        }
+
+        return coords;
+      };
 
       function is_digit(x) {
         return /[0-9]/.test(x);
@@ -889,6 +909,8 @@
     }
 
     #main-input {
+      letter-spacing: 0.75em;
+      font-family:  Monaco, 'Courier New', monospace;
       flex: 1 1 auto;
       font-size: calc(1em * var(--input-scale));
       line-height: 1em;
