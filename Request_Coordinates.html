@@ -419,12 +419,11 @@
               // for any number of digits in each part
               while (!buf.is_end()) {
                 if (is_digit(buf.peek_at(0))) {
-                  const next = buf.take(1);
-
                   while (true) {
                     const n2 = buf.peek_at(0);
                     if (is_digit(n2)) {
                       if (h === null) {
+                        w = w || 0;
                         w = w * 10 + parseInt(buf.take(), 10);
                       } else {
                         h = h * 10 + parseInt(buf.take(), 10);
@@ -434,6 +433,12 @@
                     }
                   }
                 } else if (buf.peek_at(0) === ':') {
+                  if (w === null) {
+                    return {
+                      error: `Must specify the width part of the aspect ratio before ':'`,
+                      index: buf.offset,
+                    };
+                  }
                   buf.take(1);
                   h = 0;
                 } else {
