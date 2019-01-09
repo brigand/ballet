@@ -363,8 +363,13 @@
             continue;
           }
 
-          if (first === 'i' || first === 'I') {
-            ops.push(['Inset', true]);
+          if (first === 'i') {
+          ops.push(['Inset', true]);
+            continue;
+          }
+
+          if (first === 'I') {
+            ops.push(['Outset', true]);
             continue;
           }
 
@@ -1056,7 +1061,7 @@
     }
 
     #preview_contents .dot {
-      font-size: 0.9em;
+      font-size: 0.53em;
       width: 1em;
       height: 1em;
       margin-right: 0.5em;
