@@ -412,27 +412,25 @@
               let w = null;
               let h = null;
 
+              // parsing any of...
+              //   a1 -> [1, 1]
+              //   a1:2 -> [1, 2]
+              //   a16:9 -> [16, 9]
+              // for any number of digits in each part
               while (!buf.is_end()) {
                 if (is_digit(buf.peek_at(0))) {
                   const next = buf.take(1);
 
-                  if (h === null) {
-                    while (true) {
-                      const n2 = buf.peek_at(0);
-                      if (is_digit(n2)) {
+                  while (true) {
+                    const n2 = buf.peek_at(0);
+                    if (is_digit(n2)) {
+                      if (h === null) {
                         w = w * 10 + parseInt(buf.take(), 10);
                       } else {
-                        break;
-                      }
-                    }
-                  } else {
-                    while (true) {
-                      const n2 = buf.peek_at(0);
-                      if (is_digit(n2)) {
                         h = h * 10 + parseInt(buf.take(), 10);
-                      } else {
-                        break;
                       }
+                    } else {
+                      break;
                     }
                   }
                 } else if (buf.peek_at(0) === ':') {
@@ -444,7 +442,9 @@
               }
 
               if (w !== null) {
-                if (h === null) {
+                // either null or 0. Would be 0 in the case of `a1:`,
+                // which is a WIP value
+                if (!h) {
                   h = w;
                 }
 
