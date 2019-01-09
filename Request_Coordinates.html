@@ -1,48 +1,48 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
-<head>
-  <meta charset="UTF-8">
-  <title>Select Window Coordinates</title>
-  <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<!--
-  TODO: these numbers are outdated. Update them.
+  <head>
+    <meta charset="UTF-8" />
+    <title>Select Window Coordinates</title>
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <!--
+    TODO: these numbers are outdated. Update them.
 
-  The UI is fully responsive, but an aspect ratio of 7.25:5 (1.45) works well. Sizes at 1/3 height:
-  1080:
-    <body data-kmwidth="522" data-kmheight="360">
-  1440:
-    <body data-kmwidth="696" data-kmheight="480">
-  4k:
-    <body data-kmwidth="1044" data-kmheight="720">
--->
-<body data-kmwidth="1120" data-kmheight="720">
-  <style>
+    The UI is fully responsive, but an aspect ratio of 7.25:5 (1.45) works well. Sizes at 1/3 height:
+    1080:
+      <body data-kmwidth="522" data-kmheight="360">
+    1440:
+      <body data-kmwidth="696" data-kmheight="480">
+    4k:
+      <body data-kmwidth="1044" data-kmheight="720">
+  -->
+  <body data-kmwidth="1120" data-kmheight="720">
+    <style>
       /* Theme settings; modify as you like */
       :root {
         --background: #444;
         --background-stripe: #555;
-        --foreground: #FFF5EE;
+        --foreground: #fff5ee;
         --background-alt: #232935;
         --foreground-alt: #9ad7e9;
         --foreground-alt-muted: #a1bdc6;
         --moderate-contrast: rgba(164, 164, 164, 0.5);
-        --error-color: #FF80AB;
+        --error-color: #ff80ab;
       }
 
       /* Light theme, inherits from above */
-      [data-theme="light"] {
+      [data-theme='light'] {
         --background: #f8f8f8;
         --background-stripe: hsl(244, 17.7%, 81%);
         --moderate-contrast: rgba(100, 100, 100, 0.5);
         --foreground: #444444;
-        --background-alt: #7BC2DE;
-        --foreground-alt: #8F89E4;
-        --foreground-alt-muted: #BCB8F3;
+        --background-alt: #7bc2de;
+        --foreground-alt: #8f89e4;
+        --foreground-alt-muted: #bcb8f3;
       }
 
-        /* Variables for math things */
+      /* Variables for math things */
       :root {
         /* We override this later in the JS, so just using a reasonable default for now */
         --screen-aspect: calc(16 / 9);
@@ -63,10 +63,11 @@
         :root {
           --preview-space: calc(100vh - 6.4em);
           --preview-height: var(--preview-space);
-          --preview-width: calc(var(--preview-space) / (1 / var(--screen-aspect)));
+          --preview-width: calc(
+            var(--preview-space) / (1 / var(--screen-aspect))
+          );
         }
       }
-
 
       /*
         Viewport size -> font size -> everything size. Makes it behave more like scaling
@@ -80,7 +81,8 @@
     </style>
     <style>
       /* Generic CSS Resets */
-      html, body {
+      html,
+      body {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
@@ -104,7 +106,8 @@
         font-family: Arial;
       }
 
-      *::selection, input::selection {
+      *::selection,
+      input::selection {
         background: var(--foreground-alt);
         color: white;
       }
@@ -116,1053 +119,1143 @@
         font-family: inherit;
       }
     </style>
-  <section id="preview">
-    <div id="preview_osx_bar"></div>
-    <div id="preview_inner">
-      <div id="preview_contents">
+    <section id="preview">
+      <div id="preview_osx_bar"></div>
+      <div id="preview_inner">
+        <div id="preview_contents">
           <div class="menu_bar">
             <div class="dot"></div>
             <div class="dot"></div>
             <div class="dot"></div>
           </div>
+        </div>
       </div>
-    </div>
-  </section>
-  <form id="form">
-    <input autocomplete="off" id="main-input" type="text" value="11" placeholder="1" autofocus />
-    <div id="error" class="hidden"></div>
-    <button type="submit" id="submit">➡</button>
-  </form>
-  <div id="popup" class="hidden">
-    <div class="contents"></div>
-  </div>
+    </section>
+    <form id="form">
+      <input
+        autocomplete="off"
+        id="main-input"
+        type="text"
+        value="11"
+        placeholder="1"
+        autofocus
+      />
+      <div id="error" class="hidden"></div>
+      <button type="submit" id="submit">➡</button>
+    </form>
+    <div id="popup" class="hidden"><div class="contents"></div></div>
 
-  <script>
-    {
-      window.$dbg = {};
+    <script>
+      {
+        window.$dbg = {};
 
-      const input = document.querySelector('#main-input');
-      const preview = document.querySelector('#preview');
-      const preview_inner = document.querySelector('#preview_inner');
-      const preview_osx_bar = document.querySelector('#preview_osx_bar');
-      const form = document.querySelector('#form');
-      const error_el = document.querySelector('#error');
-      const popup = document.querySelector('#popup');
-      const popup_contents = document.querySelector('#popup .contents');
-      const preview_contents = document.querySelector('#preview_contents');
+        const input = document.querySelector('#main-input');
+        const preview = document.querySelector('#preview');
+        const preview_inner = document.querySelector('#preview_inner');
+        const preview_osx_bar = document.querySelector('#preview_osx_bar');
+        const form = document.querySelector('#form');
+        const error_el = document.querySelector('#error');
+        const popup = document.querySelector('#popup');
+        const popup_contents = document.querySelector('#popup .contents');
+        const preview_contents = document.querySelector('#preview_contents');
 
-      let screen = null;
+        let screen = null;
 
-      window.addEventListener('error', (error) => {
-        setTimeout(() => {
-          let html = `Please report this error here https://git.io/fhLs1.<br>\n`;
-          html += '<pre class="uncaught">';
+        window.addEventListener('error', (error) => {
+          setTimeout(() => {
+            let html = `Please report this error here https://git.io/fhLs1.<br>\n`;
+            html += '<pre class="uncaught">';
 
-          if (error.error.stack) {
-            html += html_escape(String(error.error.stack));
-          } else {
-            html += html_escape(String(error.error));
-          }
-          html += '</pre>';
-          setPopupHtml(html);
-        }, 5);
-      });
-
-      let inputHistory;
-
-      const init = () => {
-
-        // Clear out the variables
-        set_km_vars([[null, null], [null, null]]);
-
-        // TODO: implement side margins, for side positioned docks
-        if (window.KeyboardMaestro) {
-          screen = {
-            width: window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, WIDTH)'),
-            height: window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, HEIGHT)'),
-            full_width: window.KeyboardMaestro.Calculate('SCREEN(Front, WIDTH)'),
-            full_height: window.KeyboardMaestro.Calculate('SCREEN(Front, HEIGHT)'),
-            margin: {},
-          };
-
-          screen.margin_top = window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, TOP)');
-          screen.margin_bottom = window.KeyboardMaestro.Calculate('SCREEN(Front, BOTTOM)') -
-            window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, BOTTOM)');
-        } else {
-          // emulate the screen size when not in KM
-          // screen = { full_width: 1920, full_height: 1080 };
-          screen = { full_width: 2560, full_height: 1440 };
-          // screen = { full_width: 3840, full_height: 2160 };
-
-          screen.margin_top = 20;
-          screen.margin_bottom = 0;
-          screen.width = screen.full_width;
-          screen.height = screen.full_height - screen.margin_top - screen.margin_bottom;
-        }
-
-        inputHistory = new InputHistory(get_km_var('Coord_History'));
-        $dbg.inputHistory = inputHistory;
-
-        // Restore last executed value
-        const last = inputHistory.get();
-        if (last) {
-          input.value = last.value;
-        }
-
-        input.addEventListener('input', () => {
-          update({});
-        }, false);
-
-        input.addEventListener('keydown', (event) => {
-          if (event.key === 'ArrowUp') {
-            const item = inputHistory.goBack().get();
-            input.value = item.value;
-            update({});
-          } else if (event.key === 'ArrowDown') {
-            const item = inputHistory.goForward().get();
-            input.value = item.value;
-            update({});
-          }
-        }, false);
-
-        {
-          // We can't use margins because they'd be percentags of width
-          const mt_p = screen.margin_top / screen.full_height;
-          const mb_p = screen.margin_bottom / screen.full_height;
-          const both = mt_p + mb_p;
-          preview_inner.style.position = 'relative';
-          preview_inner.style.height = (1 - both) * 100 + '%';
-          preview_osx_bar.style.height =  mt_p * 100 + '%';
-
-          // Let's make sure we have the right aspect ratio; otherwise things won't work correctly.
-          const full_aspect = screen.full_width / screen.full_height;
-
-          document.documentElement.style.setProperty('--screen-aspect', full_aspect);
-        }
-
-        update({});
-        input.select();
-      };
-
-      // Track variables in a Map so we can display them when not running inside KeyboardMaestro
-      const var_store = new Map();
-
-      form.addEventListener('submit', (event) => {
-        event.preventDefault();
-
-        const { coordinates, error } = update();
-
-        if (error) {
-          alert(`The input is invalid.\nPlease correct it or press Escape to quit:\n\n${error}`);
-          return;
-        }
-
-        set_km_vars(coordinates);
-
-        set_km_var('Coord_History', JSON.stringify(
-          inputHistory
-            .persistEphemeral()
-            .truncate(15)
-        ));
-
-        if (window.KeyboardMaestro) {
-          window.KeyboardMaestro.Submit('OK');
-        } else {
-          popup.classList.toggle('hidden', false);
-          let html = html_escape(`If in KeyboardMaestro, we'd set these variables`) + '<dl>';
-          for (const [k, v] of var_store) {
-            html += `<dt>` + html_escape(k) + `</dt><dd>${html_escape(v)}</dd>\n`;
-          }
-          html += '</dl>';
-
-          setPopupHtml(html);
-        }
-      });
-
-      const setPopupHtml = (html) => {
-        if (html) {
-          popup.classList.toggle('hidden', false);
-          popup_contents.innerHTML = html;
-        } else {
-          popup.classList.toggle('hidden', true);
-          popup_contents.innerHTML = '';
-        }
-      }
-
-      window.addEventListener('click', () => {
-        setPopupHtml(null);
-      });
-
-      const set_km_var = (key, value) => {
-        let serialized = value == null ? '' : value;
-
-        if (typeof value === 'number' && Number.isFinite(value)) {
-          serialized = value.toFixed('.000260417'.length - 1);
-        }
-
-        var_store.set(key, serialized);
-        if (window.KeyboardMaestro) {
-          window.KeyboardMaestro.SetVariable(key, serialized);
-        }
-      }
-
-      const get_km_var = (key) => {
-        if (window.KeyboardMaestro) {
-          return window.KeyboardMaestro.GetVariable(key) || null;
-        } else {
-          return var_store.get(key) || null;
-        }
-      }
-
-      const set_km_vars = (coords) => {
-        const [[x1, y1], [x2, y2]] = coords;
-
-        set_km_var('Coord_X_1', x1);
-        set_km_var('Coord_Y_1', y1);
-        set_km_var('Coord_X_2', x2);
-        set_km_var('Coord_Y_2', y2);
-        set_km_var('Coord_JSON', JSON.stringify(coords));
-      };
-
-      const update = (params) => {
-        setPopupHtml(null);
-
-        const { error, ops } = parse_input();
-
-        inputHistory.setEphermeral(input.value);
-
-        error_el.classList.toggle('hidden', !error);
-        error_el.textContent = error ? String(error) : '';
-
-        if (ops && !error) {
-          // You can uncomment this to see how the input gets parsed.
-          // console.log(success.map(x => x.debug()).join('\n'));
-          const coordinates = parsed_to_coordinates(ops);
-
-          preview_contents.style.opacity = '1';
-          preview_contents.style.left = coordinates[0][0] * 100 + '%';
-          preview_contents.style.top = coordinates[0][1] * 100 + '%';
-          preview_contents.style.right = 100 - (coordinates[1][0] * 100) + '%';
-          preview_contents.style.bottom = 100 - (coordinates[1][1] * 100) + '%';
-
-          return { coordinates, error };
-        } else {
-          preview_contents.style.opacity = '0.1';
-          return { coordinates: null, error };
-        }
-      };
-
-      const parse_input = (value = input.value) => {
-        let current = 0;
-        const ops = [];
-        const buf = new StringBuf(value);
-        while (!buf.is_end()) {
-          const first = buf.take();
-
-          if (first === ' ') {
-            continue;
-          }
-
-          if (first === 'i') {
-          ops.push(['Inset', true]);
-            continue;
-          }
-
-          if (first === 'I') {
-            ops.push(['Outset', true]);
-            continue;
-          }
-
-          if (first === 'f') {
-            ops.push(['FlipX', true]);
-            continue;
-          }
-
-          if (first === 'F') {
-            ops.push(['FlipY', true]);
-            continue;
-          }
-
-          if (first === 'r') {
-            ops.push(['Rotate', 90]);
-            continue;
-          }
-
-          if (first === 'R') {
-            ops.push(['Rotate', -90]);
-            continue;
-          }
-
-          if (first === 's') {
-            ops.push(['SquareShort', true]);
-            continue;
-          }
-
-          if (first === 'S') {
-            ops.push(['SquareLong', true]);
-            continue;
-          }
-
-          const next = buf.peek_at(0);
-
-          if (is_digit(first)) {
-            if (next === '/') {
-              buf.take(1);
-              const denom = buf.take(1);
-              if (!is_digit(denom)) {
-                return { index: buf.offset - 1, error: `Expected a digit after the /` };
-              }
-
-              ops.push(['Fraction', [parseFloat(first), parseFloat(denom)]]);
-            } else if (next === '.') {
-              buf.take(1);
-              const dec = buf.take(1);
-
-              if (!is_digit(dec)) {
-                return { index: buf.offset - 1, error: `Expected a digit after the '.'` };
-              }
-
-              ops.push(['EdgeOffset', parseFloat(first + '.' + dec)]);
+            if (error.error.stack) {
+              html += html_escape(String(error.error.stack));
             } else {
-              ops.push(['EdgeOffset', parseFloat(first)]);
+              html += html_escape(String(error.error));
             }
+            html += '</pre>';
+            setPopupHtml(html);
+          }, 5);
+        });
+
+        let inputHistory;
+
+        const init = () => {
+          // Clear out the variables
+          set_km_vars([[null, null], [null, null]]);
+
+          // TODO: implement side margins, for side positioned docks
+          if (window.KeyboardMaestro) {
+            screen = {
+              width: window.KeyboardMaestro.Calculate(
+                'SCREENVISIBLE(Front, WIDTH)',
+              ),
+              height: window.KeyboardMaestro.Calculate(
+                'SCREENVISIBLE(Front, HEIGHT)',
+              ),
+              full_width: window.KeyboardMaestro.Calculate(
+                'SCREEN(Front, WIDTH)',
+              ),
+              full_height: window.KeyboardMaestro.Calculate(
+                'SCREEN(Front, HEIGHT)',
+              ),
+              margin: {},
+            };
+
+            screen.margin_top = window.KeyboardMaestro.Calculate(
+              'SCREENVISIBLE(Front, TOP)',
+            );
+            screen.margin_bottom =
+              window.KeyboardMaestro.Calculate('SCREEN(Front, BOTTOM)') -
+              window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, BOTTOM)');
           } else {
-            return { index: buf.offset - 1, error: `The character "${first}" has no meaning in this context.` }
-          }
-        }
+            // emulate the screen size when not in KM
+            // screen = { full_width: 1920, full_height: 1080 };
+            screen = { full_width: 2560, full_height: 1440 };
+            // screen = { full_width: 3840, full_height: 2160 };
 
-        // if (!buf.is_end()) {
-        //   return { error: `Parsing completed but there were extra characters: ${JSON.stringify(buf.take(1000))}` };
-        // }
-
-        return { ops, error: null };
-      }
-
-      const scale_number = (num) => {
-        // 1 => 0.0
-        // 9 => 1.0
-        return (num - 1) / 8
-      }
-
-      const parsed_to_coordinates = (parsed) => {
-        const buf = new TokenBuf(parsed);
-
-        let coordinates = null;
-
-        if (buf.peek_type() === 'EdgeOffset' || buf.items.length === 0) {
-          let item;
-          let offsets = [];
-          while (item = buf.take_value('EdgeOffset')) {
-            offsets.push(item);
+            screen.margin_top = 20;
+            screen.margin_bottom = 0;
+            screen.width = screen.full_width;
+            screen.height =
+              screen.full_height - screen.margin_top - screen.margin_bottom;
           }
 
-          coordinates = num_sequence_to_coordinates(offsets);
-        } else if (buf.peek_type() === 'Fraction') {
-          const [num, denom] = buf.take_value();
+          inputHistory = new InputHistory(get_km_var('Coord_History'));
+          $dbg.inputHistory = inputHistory;
 
-          coordinates = fraction_to_coordinates(num, denom);
-        } else {
-          // e.g. allows 'i' to be synonymous with '1i'
-          return parsed_to_coordinates([
-            ['EdgeOffset', 1],
-            ...parsed,
-          ]);
-        }
+          // Restore last executed value
+          const last = inputHistory.get();
+          if (last) {
+            input.value = last.value;
+          }
 
-        while (!buf.is_end()) {
-          if (buf.peek_type() === 'Inset') {
-            let count = 0;
-            while (buf.peek_type() === 'Inset') {
-              buf.take();
-              count += 1;
+          input.addEventListener(
+            'input',
+            () => {
+              update({});
+            },
+            false,
+          );
+
+          input.addEventListener(
+            'keydown',
+            (event) => {
+              if (event.key === 'ArrowUp') {
+                const item = inputHistory.goBack().get();
+                input.value = item.value;
+                update({});
+              } else if (event.key === 'ArrowDown') {
+                const item = inputHistory.goForward().get();
+                input.value = item.value;
+                update({});
+              }
+            },
+            false,
+          );
+
+          {
+            // We can't use margins because they'd be percentags of width
+            const mt_p = screen.margin_top / screen.full_height;
+            const mb_p = screen.margin_bottom / screen.full_height;
+            const both = mt_p + mb_p;
+            preview_inner.style.position = 'relative';
+            preview_inner.style.height = (1 - both) * 100 + '%';
+            preview_osx_bar.style.height = mt_p * 100 + '%';
+
+            // Let's make sure we have the right aspect ratio; otherwise things won't work correctly.
+            const full_aspect = screen.full_width / screen.full_height;
+
+            document.documentElement.style.setProperty(
+              '--screen-aspect',
+              full_aspect,
+            );
+          }
+
+          update({});
+          input.select();
+        };
+
+        // Track variables in a Map so we can display them when not running inside KeyboardMaestro
+        const var_store = new Map();
+
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+
+          const { coordinates, error } = update();
+
+          if (error) {
+            alert(
+              `The input is invalid.\nPlease correct it or press Escape to quit:\n\n${error}`,
+            );
+            return;
+          }
+
+          set_km_vars(coordinates);
+
+          set_km_var(
+            'Coord_History',
+            JSON.stringify(inputHistory.persistEphemeral().truncate(15)),
+          );
+
+          if (window.KeyboardMaestro) {
+            window.KeyboardMaestro.Submit('OK');
+          } else {
+            popup.classList.toggle('hidden', false);
+            let html =
+              html_escape(`If in KeyboardMaestro, we'd set these variables`) +
+              '<dl>';
+            for (const [k, v] of var_store) {
+              html +=
+                `<dt>` + html_escape(k) + `</dt><dd>${html_escape(v)}</dd>\n`;
             }
+            html += '</dl>';
 
-            // If you want to play with the base or exponent... in python:
-            //   >>> b = 20.0; exp = 2; [int(b * exp ** i) for i in range(0, 5)]
-            //   [20, 40, 80, 160, 320]
-            const screen_y_percent = 20 / 1080;
-            const unit = screen_y_percent * screen.full_height;
-            const pixels = unit * (2 ** count);
-
-            coordinates = inset_coordinates(coordinates, ...pixels_to_percent(pixels));
-          } else if (buf.peek_type() === 'Rotate') {
-            const deg = buf.take_value();
-
-            coordinates = rotate_coordinates_percent(coordinates, deg);
-          } else if (buf.take_value('FlipX')) {
-            coordinates = flip_coordinates_x(coordinates);
-          } else if (buf.take_value('FlipY')) {
-            coordinates = flip_coordinates_y(coordinates);
-          } else {
-            throw new Error(`Unexpected token ${buf.take(1)}`);
+            setPopupHtml(html);
           }
+        });
 
-          // TODO: implemnt SquareShort: reduce the long side until the screen pixels are a square
-          // TODO: implemnt SquareLong: expand the short side until the screen pixels are a square
-        }
-
-        return coordinates;
-        // TODO: implement inset
-        // TODO: implement rotate
-        // TODO: implement flip
-      }
-
-      const rotate_coordinates_percent = (coords, deg) => {
-        const [x1, y1] = rotate(0.5, 0.5, coords[0][0], coords[0][1], -deg);
-        const [x2, y2] = rotate(0.5, 0.5, coords[1][0], coords[1][1], -deg);
-        return normalize_coords([
-          [x1, y1],
-          [x2, y2],
-        ]);
-      };
-
-      const flip_coordinates_x = ([[x1, y1], [x2, y2]]) => {
-        return normalize_coords([
-          [1 - x2, y1],
-          [1 - x1, y2],
-        ]);
-      };
-
-      const flip_coordinates_y = ([[x1, y1], [x2, y2]]) => {
-        return normalize_coords([
-          [x1, 1 - y2],
-          [x2, 1 - y1],
-        ]);
-      };
-
-      const normalize_coords = (coords) => {
-        const c = x => Math.min(1, Math.max(0, x));
-        return [
-          [
-            c(Math.min(coords[0][0], coords[1][0])),
-            c(Math.min(coords[0][1], coords[1][1])),
-          ],
-          [
-            c(Math.max(coords[0][0], coords[1][0])),
-            c(Math.max(coords[0][1], coords[1][1])),
-          ]
-        ];
-      }
-
-      const rotate = (cx, cy, x, y, angle) => {
-        const radians = (Math.PI / 180) * angle;
-        const cos = Math.cos(radians);
-        const sin = Math.sin(radians);
-        const nx = (cos * (x - cx)) + (sin * (y - cy)) + cx;
-        const ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
-        return [nx, ny];
-      };
-
-      const inset_coordinates = (coords, x_percent, y_percent) => {
-        return [
-          [
-            coords[0][0] + x_percent,
-            coords[0][1] + y_percent,
-          ],
-          [
-            coords[1][0] - x_percent,
-            coords[1][1] - y_percent,
-          ],
-        ];
-      }
-
-      const num_sequence_to_coordinates = (items) => {
-        const count = items.length;
-
-        // No items? Then edge to edge
-        if (count === 0) {
-          return num_sequence_to_coordinates([1]);
-        }
-
-        // With just one number, we'll treat e.g. '4' as '44', hitting the following conditional
-        if (count === 1) {
-          if (items[0] < 5) {
-            return num_sequence_to_coordinates([items[0], items[0]]);
+        const setPopupHtml = (html) => {
+          if (html) {
+            popup.classList.toggle('hidden', false);
+            popup_contents.innerHTML = html;
           } else {
-            // but don't make a 0 sized shape
-            return num_sequence_to_coordinates([items[0], 1, 1, 1]);
-          }
-        }
-
-        /* With two numbers, copy the offset from the top left to the bottom right,
-           resulting in a centered output.
-        */
-        if (count === 2) {
-          return [
-            [
-              scale_number(items[0]),
-              scale_number(items[1]),
-            ],
-            [
-              1 - scale_number(items[0] < 5 ? items[0] : 1),
-              1 - scale_number(items[1] < 5 ? items[1] : 1),
-            ],
-          ];
-        }
-
-        /*
-          We're missing y2, so just default y2 to 1-y1.
-          TODO: is this really the most sensible option?
-        */
-        if (count === 3) {
-          return [
-            [
-              scale_number(items[0]),
-              scale_number(items[1]),
-            ],
-            [
-              1 - scale_number(items[2]),
-              1 - scale_number(items[1] < 5 ? items[1] : 1),
-            ],
-          ];
-        }
-
-        // perfect case, where we have ((x, y), (x, y))
-        if (count === 4) {
-          return [
-            [
-              scale_number(items[0]),
-              scale_number(items[1]),
-            ],
-            [
-              1 - scale_number(items[2]),
-              1 - scale_number(items[3]),
-            ],
-          ];
-        }
-      }
-
-      const fraction_to_coordinates = (num, denom) => {
-        if (!num) {
-          throw new Error(`The numerator must be between 1 and 9.`);
-        }
-
-        const by_denom = {
-          1: [
-            [0, 0, 1, 1]
-          ],
-          2: [
-            // horizontal 1:1
-            [0, 0, 1/2, 1],
-            [1/2, 0, 2/2, 1],
-          ],
-          3: [
-            // horizontal 1:1:1
-            [0, 0, 1/3, 1],
-            [1/3, 0, 2/3, 1],
-            [2/3, 0, 3/3, 1],
-          ],
-          4: [
-            // 2x2 grid
-            [0, 0, 1/2, 1/2], // top left
-            [1/2, 0, 2/2, 1/2], // top right
-            [1/2, 1/2, 2/2, 2/2], // bottom right
-            [0, 1/2, 1/2, 2/2], // bottom left
-          ],
-          6: {
-            // 3 wide, 2 tall grid
-            // TODO: implement this
+            popup.classList.toggle('hidden', true);
+            popup_contents.innerHTML = '';
           }
         };
 
-        const values = by_denom[denom];
-        // TODO: handle invalid denom with an error
+        window.addEventListener('click', () => {
+          setPopupHtml(null);
+        });
 
-        if (!values) {
-          throw new Error(`Only the denominators (${by_denom.join(',')}) are supported.`);
-        }
+        const set_km_var = (key, value) => {
+          let serialized = value == null ? '' : value;
 
-        const index = (num - 1) % values.length;
-        const [x1, y1, x2, y2] = values[index];
-
-        let coords = [[x1, y1], [x2, y2]];
-
-        // 3/2 is short for 1/2R
-        const excess = Math.floor((num - 1) / denom);
-
-        if (excess) {
-          coords = rotate_coordinates_percent(coords, excess * 90);
-        }
-
-        return coords;
-      };
-
-      function is_digit(x) {
-        return /[0-9]/.test(x);
-      }
-
-      class Option {
-        static Some(x) {
-          return new Option("Some", x);
-        }
-        static None() {
-          return new Option("None", null);
-        }
-
-        constructor(variant, value) {
-          this.variant = variant;
-          this.value = value;
-        }
-
-        is_some() {
-          return this.variant === 'Some';
-        }
-
-        is_none() {
-          return !this.is_some;
-        }
-
-        unwrap() {
-          if (this.is_some()) {
-            return this.value;
-          }
-          throw new Error('None.unwrap() was called');
-        }
-
-        debug() {
-          if (this.is_some()) {
-            return `Some(${JSON.stringify(this.value)})`;
-          }
-          return `None`;
-        }
-      }
-
-      const pixels_to_percent = (pixels) => {
-        const x = pixels / screen.width;
-        const y = pixels / screen.height;
-
-        return [x, y];
-      }
-
-      class Buf {
-        constructor(arg) {
-          this.items = [...arg];
-          this.index = 0;
-        }
-
-        take(count = 1) {
-          this.index += count;
-          return this.items.slice(this.index - count, this.index);
-        }
-
-        peek_n(count = 1) {
-          return this.items.slice(this.index, this.index + count);
-        }
-
-        peek_at(offset = 0) {
-          return this.items[this.index + offset];
-        }
-
-        is_end() {
-          return this.index >= this.items.length;
-        }
-      }
-
-      class StringBuf extends Buf {
-        constructor(str) {
-          super(str);
-        }
-
-        take(count = 1) {
-          return super.take(count).join('');
-        }
-
-        peek_n(count = 1) {
-          return super.peek_n(count).join('');
-        }
-      }
-
-      class TokenBuf extends Buf {
-        peek_type(offset = 0) {
-          const x = this.peek_at(offset);
-          return x ? x[0] : null;
-        }
-
-        peek_value(offset = 0) {
-          const x = this.peek_at(offset);
-          return x ? x[1] : null;
-        }
-
-        take_value(for_type) {
-          if (for_type && this.peek_type() !== for_type) {
-            return null;
+          if (typeof value === 'number' && Number.isFinite(value)) {
+            serialized = value.toFixed('.000260417'.length - 1);
           }
 
-          return this.take()[0][1];
-        }
-      }
+          var_store.set(key, serialized);
+          if (window.KeyboardMaestro) {
+            window.KeyboardMaestro.SetVariable(key, serialized);
+          }
+        };
 
-      class InputHistory {
-        constructor(historyArg) {
-          // 0 is the latest item
-          this.offset = 0;
+        const get_km_var = (key) => {
+          if (window.KeyboardMaestro) {
+            return window.KeyboardMaestro.GetVariable(key) || null;
+          } else {
+            return var_store.get(key) || null;
+          }
+        };
 
-          // For editing a history line, we need to store where
-          // in the history they were when the change happened,
-          // and what the value was.
-          this.ephermeral = new Map();
+        const set_km_vars = (coords) => {
+          const [[x1, y1], [x2, y2]] = coords;
 
-          // If we're on an ephemeral history item, since both share
-          // the same .offset value.
-          this.isEphemeral = false;
+          set_km_var('Coord_X_1', x1);
+          set_km_var('Coord_Y_1', y1);
+          set_km_var('Coord_X_2', x2);
+          set_km_var('Coord_Y_2', y2);
+          set_km_var('Coord_JSON', JSON.stringify(coords));
+        };
 
-          let items = historyArg;
+        const update = (params) => {
+          setPopupHtml(null);
 
-          // Attempt to deserialize the items array. If it doesn't exactly match
-          // our expectations, then we'll ignore the input.
-          let valid = false;
-          if (typeof items === 'string') {
-            try {
-              items = JSON.parse(items);
-            } catch (e) {
-              // do nothing
+          const { error, ops } = parse_input();
+
+          inputHistory.setEphermeral(input.value);
+
+          error_el.classList.toggle('hidden', !error);
+          error_el.textContent = error ? String(error) : '';
+
+          if (ops && !error) {
+            // You can uncomment this to see how the input gets parsed.
+            // console.log(success.map(x => x.debug()).join('\n'));
+            const coordinates = parsed_to_coordinates(ops);
+
+            preview_contents.style.opacity = '1';
+            preview_contents.style.left = coordinates[0][0] * 100 + '%';
+            preview_contents.style.top = coordinates[0][1] * 100 + '%';
+            preview_contents.style.right = 100 - coordinates[1][0] * 100 + '%';
+            preview_contents.style.bottom = 100 - coordinates[1][1] * 100 + '%';
+
+            return { coordinates, error };
+          } else {
+            preview_contents.style.opacity = '0.1';
+            return { coordinates: null, error };
+          }
+        };
+
+        const parse_input = (value = input.value) => {
+          let current = 0;
+          const ops = [];
+          const buf = new StringBuf(value);
+          while (!buf.is_end()) {
+            const first = buf.take();
+
+            if (first === ' ') {
+              continue;
+            }
+
+            if (first === 'i') {
+              ops.push(['Inset', true]);
+              continue;
+            }
+
+            if (first === 'I') {
+              ops.push(['Outset', true]);
+              continue;
+            }
+
+            if (first === 'a' || first === 'A') {
+              const dir = first === 'a' ? 'AspectShrink' : 'AspectGrow';
+              let w = null;
+              let h = null;
+
+              while (!buf.is_end()) {
+                if (is_digit(buf.peek_at(0))) {
+                  const next = buf.take(1);
+
+                  if (h === null) {
+                    while (true) {
+                      const n2 = buf.peek_at(0);
+                      if (is_digit(n2)) {
+                        w = w * 10 + parseInt(buf.take(), 10);
+                      } else {
+                        break;
+                      }
+                    }
+                  } else {
+                    while (true) {
+                      const n2 = buf.peek_at(0);
+                      if (is_digit(n2)) {
+                        h = h * 10 + parseInt(buf.take(), 10);
+                      } else {
+                        break;
+                      }
+                    }
+                  }
+                } else if (buf.peek_at(0) === ':') {
+                  buf.take(1);
+                  h = 0;
+                } else {
+                  break;
+                }
+              }
+
+              if (w !== null) {
+                if (h === null) {
+                  h = w;
+                }
+
+                ops.push([dir, { w, h }]);
+              }
+              continue;
+            }
+
+            if (first === 'f') {
+              ops.push(['FlipX', true]);
+              continue;
+            }
+
+            if (first === 'F') {
+              ops.push(['FlipY', true]);
+              continue;
+            }
+
+            if (first === 'r') {
+              ops.push(['Rotate', 90]);
+              continue;
+            }
+
+            if (first === 'R') {
+              ops.push(['Rotate', -90]);
+              continue;
+            }
+
+            if (first === 's') {
+              ops.push(['SquareShort', true]);
+              continue;
+            }
+
+            if (first === 'S') {
+              ops.push(['SquareLong', true]);
+              continue;
+            }
+
+            const next = buf.peek_at(0);
+
+            if (is_digit(first)) {
+              if (next === '/') {
+                buf.take(1);
+                const denom = buf.take(1);
+                if (!is_digit(denom)) {
+                  return {
+                    index: buf.offset - 1,
+                    error: `Expected a digit after the /`,
+                  };
+                }
+
+                ops.push(['Fraction', [parseFloat(first), parseFloat(denom)]]);
+              } else if (next === '.') {
+                buf.take(1);
+                const dec = buf.take(1);
+
+                if (!is_digit(dec)) {
+                  return {
+                    index: buf.offset - 1,
+                    error: `Expected a digit after the '.'`,
+                  };
+                }
+
+                ops.push(['EdgeOffset', parseFloat(first + '.' + dec)]);
+              } else {
+                ops.push(['EdgeOffset', parseFloat(first)]);
+              }
+            } else {
+              return {
+                index: buf.offset - 1,
+                error: `The character "${first}" has no meaning in this context.`,
+              };
             }
           }
 
-          if (Array.isArray(items)) {
-            items = items.map(item => item && typeof item.value === 'string' ? ({
-              value: item.value,
-            }) : null);
+          // if (!buf.is_end()) {
+          //   return { error: `Parsing completed but there were extra characters: ${JSON.stringify(buf.take(1000))}` };
+          // }
 
-            valid = items.every(Boolean);
+          return { ops, error: null };
+        };
+
+        const scale_number = (num) => {
+          // 1 => 0.0
+          // 9 => 1.0
+          return (num - 1) / 8;
+        };
+
+        const parsed_to_coordinates = (parsed) => {
+          const buf = new TokenBuf(parsed);
+
+          let coordinates = null;
+
+          if (buf.peek_type() === 'EdgeOffset' || buf.items.length === 0) {
+            let item;
+            let offsets = [];
+            while ((item = buf.take_value('EdgeOffset'))) {
+              offsets.push(item);
+            }
+
+            coordinates = num_sequence_to_coordinates(offsets);
+          } else if (buf.peek_type() === 'Fraction') {
+            const [num, denom] = buf.take_value();
+
+            coordinates = fraction_to_coordinates(num, denom);
           } else {
-            valid = false;
+            // e.g. allows 'i' to be synonymous with '1i'
+            return parsed_to_coordinates([['EdgeOffset', 1], ...parsed]);
           }
 
-          if (!valid) {
-            items = [];
+          while (!buf.is_end()) {
+            if (buf.peek_type() === 'Inset') {
+              let count = 0;
+              while (buf.peek_type() === 'Inset') {
+                buf.take();
+                count += 1;
+              }
+
+              // If you want to play with the base or exponent... in python:
+              //   >>> b = 20.0; exp = 2; [int(b * exp ** i) for i in range(0, 5)]
+              //   [20, 40, 80, 160, 320]
+              const screen_y_percent = 20 / 1080;
+              const unit = screen_y_percent * screen.full_height;
+              const pixels = unit * 2 ** count;
+
+              coordinates = inset_coordinates(
+                coordinates,
+                ...pixels_to_percent(pixels),
+              );
+            } else if (buf.peek_type() === 'Rotate') {
+              const deg = buf.take_value();
+
+              coordinates = rotate_coordinates_percent(coordinates, deg);
+            } else if (buf.take_value('FlipX')) {
+              coordinates = flip_coordinates_x(coordinates);
+            } else if (buf.take_value('FlipY')) {
+              coordinates = flip_coordinates_y(coordinates);
+            } else {
+              throw new Error(`Unexpected token ${buf.take(1)}`);
+            }
+
+            // TODO: implemnt SquareShort: reduce the long side until the screen pixels are a square
+            // TODO: implemnt SquareLong: expand the short side until the screen pixels are a square
           }
 
-          this.items = items;
-        }
+          return coordinates;
+          // TODO: implement inset
+          // TODO: implement rotate
+          // TODO: implement flip
+        };
 
-        truncate(size) {
-          this.items = this.items.slice(0, size);
-          this.offset = Math.max(0, Math.min(this.offset, this.items.length - 1));
-          return this.mapSetEphemeral((k, v) => (k < this.items.length ? [k, v] : null));
-        }
+        const rotate_coordinates_percent = (coords, deg) => {
+          const [x1, y1] = rotate(0.5, 0.5, coords[0][0], coords[0][1], -deg);
+          const [x2, y2] = rotate(0.5, 0.5, coords[1][0], coords[1][1], -deg);
+          return normalize_coords([[x1, y1], [x2, y2]]);
+        };
 
-        get() {
-          if (this.isEphemeral) {
-            return this.ephermeral.get(this.offset);
-          } else {
-            return this.items[this.offset];
+        const flip_coordinates_x = ([[x1, y1], [x2, y2]]) => {
+          return normalize_coords([[1 - x2, y1], [1 - x1, y2]]);
+        };
+
+        const flip_coordinates_y = ([[x1, y1], [x2, y2]]) => {
+          return normalize_coords([[x1, 1 - y2], [x2, 1 - y1]]);
+        };
+
+        const normalize_coords = (coords) => {
+          const c = (x) => Math.min(1, Math.max(0, x));
+          return [
+            [
+              c(Math.min(coords[0][0], coords[1][0])),
+              c(Math.min(coords[0][1], coords[1][1])),
+            ],
+            [
+              c(Math.max(coords[0][0], coords[1][0])),
+              c(Math.max(coords[0][1], coords[1][1])),
+            ],
+          ];
+        };
+
+        const rotate = (cx, cy, x, y, angle) => {
+          const radians = (Math.PI / 180) * angle;
+          const cos = Math.cos(radians);
+          const sin = Math.sin(radians);
+          const nx = cos * (x - cx) + sin * (y - cy) + cx;
+          const ny = cos * (y - cy) - sin * (x - cx) + cy;
+          return [nx, ny];
+        };
+
+        const inset_coordinates = (coords, x_percent, y_percent) => {
+          return [
+            [coords[0][0] + x_percent, coords[0][1] + y_percent],
+            [coords[1][0] - x_percent, coords[1][1] - y_percent],
+          ];
+        };
+
+        const num_sequence_to_coordinates = (items) => {
+          const count = items.length;
+
+          // No items? Then edge to edge
+          if (count === 0) {
+            return num_sequence_to_coordinates([1]);
           }
-        }
 
-        mapSetEphemeral(modifier) {
-          const new_map = new Map();
-          for (const [offset, value] of this.ephermeral) {
-            const updated = modifier(offset, value);
-            if (updated && updated.length === 2) {
-              new_map.set(updated[0], updated[1]);
+          // With just one number, we'll treat e.g. '4' as '44', hitting the following conditional
+          if (count === 1) {
+            if (items[0] < 5) {
+              return num_sequence_to_coordinates([items[0], items[0]]);
+            } else {
+              // but don't make a 0 sized shape
+              return num_sequence_to_coordinates([items[0], 1, 1, 1]);
             }
           }
-          this.ephermeral = new_map;
-          return this;
+
+          /* With two numbers, copy the offset from the top left to the bottom right,
+           resulting in a centered output.
+        */
+          if (count === 2) {
+            return [
+              [scale_number(items[0]), scale_number(items[1])],
+              [
+                1 - scale_number(items[0] < 5 ? items[0] : 1),
+                1 - scale_number(items[1] < 5 ? items[1] : 1),
+              ],
+            ];
+          }
+
+          /*
+          We're missing y2, so just default y2 to 1-y1.
+          TODO: is this really the most sensible option?
+        */
+          if (count === 3) {
+            return [
+              [scale_number(items[0]), scale_number(items[1])],
+              [
+                1 - scale_number(items[2]),
+                1 - scale_number(items[1] < 5 ? items[1] : 1),
+              ],
+            ];
+          }
+
+          // perfect case, where we have ((x, y), (x, y))
+          if (count === 4) {
+            return [
+              [scale_number(items[0]), scale_number(items[1])],
+              [1 - scale_number(items[2]), 1 - scale_number(items[3])],
+            ];
+          }
+        };
+
+        const fraction_to_coordinates = (num, denom) => {
+          if (!num) {
+            throw new Error(`The numerator must be between 1 and 9.`);
+          }
+
+          const by_denom = {
+            1: [[0, 0, 1, 1]],
+            2: [
+              // horizontal 1:1
+              [0, 0, 1 / 2, 1],
+              [1 / 2, 0, 2 / 2, 1],
+            ],
+            3: [
+              // horizontal 1:1:1
+              [0, 0, 1 / 3, 1],
+              [1 / 3, 0, 2 / 3, 1],
+              [2 / 3, 0, 3 / 3, 1],
+            ],
+            4: [
+              // 2x2 grid
+              [0, 0, 1 / 2, 1 / 2], // top left
+              [1 / 2, 0, 2 / 2, 1 / 2], // top right
+              [1 / 2, 1 / 2, 2 / 2, 2 / 2], // bottom right
+              [0, 1 / 2, 1 / 2, 2 / 2], // bottom left
+            ],
+            6: {
+              // 3 wide, 2 tall grid
+              // TODO: implement this
+            },
+          };
+
+          const values = by_denom[denom];
+          // TODO: handle invalid denom with an error
+
+          if (!values) {
+            throw new Error(
+              `Only the denominators (${by_denom.join(',')}) are supported.`,
+            );
+          }
+
+          const index = (num - 1) % values.length;
+          const [x1, y1, x2, y2] = values[index];
+
+          let coords = [[x1, y1], [x2, y2]];
+
+          // 3/2 is short for 1/2R
+          const excess = Math.floor((num - 1) / denom);
+
+          if (excess) {
+            coords = rotate_coordinates_percent(coords, excess * 90);
+          }
+
+          return coords;
+        };
+
+        function is_digit(x) {
+          return /[0-9]/.test(x);
         }
 
-        persistEphemeral() {
-          if (!this.isEphemeral) {
+        class Option {
+          static Some(x) {
+            return new Option('Some', x);
+          }
+          static None() {
+            return new Option('None', null);
+          }
+
+          constructor(variant, value) {
+            this.variant = variant;
+            this.value = value;
+          }
+
+          is_some() {
+            return this.variant === 'Some';
+          }
+
+          is_none() {
+            return !this.is_some;
+          }
+
+          unwrap() {
+            if (this.is_some()) {
+              return this.value;
+            }
+            throw new Error('None.unwrap() was called');
+          }
+
+          debug() {
+            if (this.is_some()) {
+              return `Some(${JSON.stringify(this.value)})`;
+            }
+            return `None`;
+          }
+        }
+
+        const pixels_to_percent = (pixels) => {
+          const x = pixels / screen.width;
+          const y = pixels / screen.height;
+
+          return [x, y];
+        };
+
+        class Buf {
+          constructor(arg) {
+            this.items = [...arg];
+            this.index = 0;
+          }
+
+          take(count = 1) {
+            this.index += count;
+            return this.items.slice(this.index - count, this.index);
+          }
+
+          peek_n(count = 1) {
+            return this.items.slice(this.index, this.index + count);
+          }
+
+          peek_at(offset = 0) {
+            return this.items[this.index + offset];
+          }
+
+          is_end() {
+            return this.index >= this.items.length;
+          }
+        }
+
+        class StringBuf extends Buf {
+          constructor(str) {
+            super(str);
+          }
+
+          take(count = 1) {
+            return super.take(count).join('');
+          }
+
+          peek_n(count = 1) {
+            return super.peek_n(count).join('');
+          }
+        }
+
+        class TokenBuf extends Buf {
+          peek_type(offset = 0) {
+            const x = this.peek_at(offset);
+            return x ? x[0] : null;
+          }
+
+          peek_value(offset = 0) {
+            const x = this.peek_at(offset);
+            return x ? x[1] : null;
+          }
+
+          take_value(for_type) {
+            if (for_type && this.peek_type() !== for_type) {
+              return null;
+            }
+
+            return this.take()[0][1];
+          }
+        }
+
+        class InputHistory {
+          constructor(historyArg) {
+            // 0 is the latest item
+            this.offset = 0;
+
+            // For editing a history line, we need to store where
+            // in the history they were when the change happened,
+            // and what the value was.
+            this.ephermeral = new Map();
+
+            // If we're on an ephemeral history item, since both share
+            // the same .offset value.
+            this.isEphemeral = false;
+
+            let items = historyArg;
+
+            // Attempt to deserialize the items array. If it doesn't exactly match
+            // our expectations, then we'll ignore the input.
+            let valid = false;
+            if (typeof items === 'string') {
+              try {
+                items = JSON.parse(items);
+              } catch (e) {
+                // do nothing
+              }
+            }
+
+            if (Array.isArray(items)) {
+              items = items.map((item) =>
+                item && typeof item.value === 'string'
+                  ? {
+                      value: item.value,
+                    }
+                  : null,
+              );
+
+              valid = items.every(Boolean);
+            } else {
+              valid = false;
+            }
+
+            if (!valid) {
+              items = [];
+            }
+
+            this.items = items;
+          }
+
+          truncate(size) {
+            this.items = this.items.slice(0, size);
+            this.offset = Math.max(
+              0,
+              Math.min(this.offset, this.items.length - 1),
+            );
+            return this.mapSetEphemeral((k, v) =>
+              k < this.items.length ? [k, v] : null,
+            );
+          }
+
+          get() {
+            if (this.isEphemeral) {
+              return this.ephermeral.get(this.offset);
+            } else {
+              return this.items[this.offset];
+            }
+          }
+
+          mapSetEphemeral(modifier) {
+            const new_map = new Map();
+            for (const [offset, value] of this.ephermeral) {
+              const updated = modifier(offset, value);
+              if (updated && updated.length === 2) {
+                new_map.set(updated[0], updated[1]);
+              }
+            }
+            this.ephermeral = new_map;
             return this;
           }
 
-          this.isEphemeral = false; // the .get() needs this
-
-          const newest = this.items[0];
-          const current = this.items[this.offset];
-          const eph = this.ephermeral.get(this.offset);
-          this.ephermeral.delete(this.offset);
-
-          if (!eph) {
-            // shouldn't happen
-            return;
-          }
-
-          // avoid the sequantial duplicates
-          const a = newest && newest.value === eph.value;
-          const b = current && current.value === eph.value;
-
-          if (!a && !b) {
-            this.add(eph.value);
-          }
-
-          return this;
-        }
-
-        add(value) {
-          this.items.unshift({ value });
-          return this.mapSetEphemeral((k, v) => [k + 1, v]);
-        }
-
-        setEphermeral(value) {
-          const current = this.get();
-
-          if (!this.isEphemeral && current && current.value === value) {
-            return;
-          }
-
-          this.ephermeral.set(this.offset, { value, ephermeral: true });
-          this.isEphemeral = true;
-          return this;
-        }
-
-        goBack() {
-          if (this.isEphemeral) {
-            // is there a non-ephemeral item to return to?
-            if (this.items.length) {
-              this.isEphemeral = false;
+          persistEphemeral() {
+            if (!this.isEphemeral) {
+              return this;
             }
-            // keep the same offset
-          } else if (this.offset < this.items.length - 1) {
-            this.offset += 1;
 
-            if (this.ephermeral.get(this.offset)) {
-              this.isEphemeral = true;
+            this.isEphemeral = false; // the .get() needs this
+
+            const newest = this.items[0];
+            const current = this.items[this.offset];
+            const eph = this.ephermeral.get(this.offset);
+            this.ephermeral.delete(this.offset);
+
+            if (!eph) {
+              // shouldn't happen
+              return;
             }
-          }
-          return this;
-        }
 
-        goForward() {
-          if (this.offset > 0) {
-            if (!this.isEphemeral && this.ephermeral.has(this.offset)) {
-              this.isEphemeral = true;
+            // avoid the sequantial duplicates
+            const a = newest && newest.value === eph.value;
+            const b = current && current.value === eph.value;
+
+            if (!a && !b) {
+              this.add(eph.value);
+            }
+
+            return this;
+          }
+
+          add(value) {
+            this.items.unshift({ value });
+            return this.mapSetEphemeral((k, v) => [k + 1, v]);
+          }
+
+          setEphermeral(value) {
+            const current = this.get();
+
+            if (!this.isEphemeral && current && current.value === value) {
+              return;
+            }
+
+            this.ephermeral.set(this.offset, { value, ephermeral: true });
+            this.isEphemeral = true;
+            return this;
+          }
+
+          goBack() {
+            if (this.isEphemeral) {
+              // is there a non-ephemeral item to return to?
+              if (this.items.length) {
+                this.isEphemeral = false;
+              }
+              // keep the same offset
+            } else if (this.offset < this.items.length - 1) {
+              this.offset += 1;
+
+              if (this.ephermeral.get(this.offset)) {
+                this.isEphemeral = true;
+              }
+            }
+            return this;
+          }
+
+          goForward() {
+            if (this.offset > 0) {
+              if (!this.isEphemeral && this.ephermeral.has(this.offset)) {
+                this.isEphemeral = true;
+              } else {
+                this.offset -= 1;
+                this.isEphemeral = false;
+              }
             } else {
-              this.offset -= 1;
-              this.isEphemeral = false;
+              this.isEphemeral = this.ephermeral.has(this.offset);
             }
-          } else {
-            this.isEphemeral = this.ephermeral.has(this.offset);
+
+            return this;
           }
 
-          return this;
+          toJSON() {
+            return this.items;
+          }
         }
 
-        toJSON() {
-          return this.items;
-        }
+        const html_escape = (str) =>
+          str
+            .replace(/&/g, '&amp;')
+            .replace(/>/g, '&gt;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/`/g, '&#96;');
+
+        init();
+      }
+    </script>
+
+    <style>
+      /* Our custom styles */
+      html,
+      body {
+        background: var(--background);
+        color: var(--foreground);
+        font-family: Arial, Helvetica, sans-serif;
       }
 
-      const html_escape = (str) =>
-        str
-          .replace(/&/g, '&amp;')
-          .replace(/>/g, '&gt;')
-          .replace(/</g, '&lt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#39;')
-          .replace(/`/g, '&#96;');
+      body {
+        font-size: var(--rt-font-size);
+        display: flex;
+        flex-direction: column;
+      }
 
-      init();
-    }
-  </script>
+      #form {
+        display: flex;
+      }
 
-<style>
-    /* Our custom styles */
-    html, body {
+      #main-input {
+        letter-spacing: 0.75em;
+        font-family: Monaco, 'Courier New', monospace;
+        flex: 1 1 auto;
+        font-size: calc(1em * var(--input-scale));
+        line-height: 1em;
+        padding: 0.5em 0.8em;
+        background: var(--background-alt);
+        width: 100%;
+      }
 
-      background: var(--background);
-      color: var(--foreground);
-      font-family: Arial, Helvetica, sans-serif;
-    }
+      #main-input:focus {
+        outline: none;
+        box-shadow: inset 0 0 2.5px 1px var(--foreground-alt);
+      }
 
-    body {
-      font-size: var(--rt-font-size);
-      display: flex;
-      flex-direction: column;
-    }
+      #main-input::-webkit-input-placeholder {
+        color: var(--moderate-contrast);
+      }
 
-    #form {
-      display: flex;
-    }
+      #buttons {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        flex: 0 0 auto;
+      }
 
-    #main-input {
-      letter-spacing: 0.75em;
-      font-family:  Monaco, 'Courier New', monospace;
-      flex: 1 1 auto;
-      font-size: calc(1em * var(--input-scale));
-      line-height: 1em;
-      padding: 0.5em 0.8em;
-      background: var(--background-alt);
-      width: 100%;
-    }
+      #submit {
+        font-size: 3em;
+        width: 1.8em;
+        background: var(--background-alt);
+      }
 
-    #main-input:focus {
-      outline: none;
-      box-shadow: inset 0 0 2.5px 1px var(--foreground-alt);
-    }
+      #submit:focus {
+        outline: none;
+        box-shadow: inset 0 0 2.5px 1px var(--foreground-alt);
+      }
 
-    #main-input::-webkit-input-placeholder {
-      color: var(--moderate-contrast);
-    }
+      #preview {
+        width: var(--preview-width);
+        height: var(--preview-height);
+        overflow: hidden;
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        margin: auto auto;
 
-    #buttons {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      flex: 0 0 auto;
-    }
+        background-image: var(--bg-pattern);
+        box-shadow: 0 0 0 2px var(--moderate-contrast);
+        border-radius: 0.5em;
+      }
 
-    #submit {
-      font-size: 3em;
-      width: 1.8em;
-      background: var(--background-alt);
-    }
+      #preview_osx_bar {
+        --bg-color-1: hsla(0, 0%, 65%, 0.5);
+        background: linear-gradient(
+            0,
+            var(--bg-color-1) 0%,
+            var(--bg-color-1) 100%
+          ),
+          var(--background);
 
-    #submit:focus {
-      outline: none;
-      box-shadow: inset 0 0 2.5px 1px var(--foreground-alt);
-    }
+        box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.3),
+          0 0 1.5px 2px rgba(220, 220, 220, 0.7);
+      }
 
-    #preview {
-      width: var(--preview-width);
-      height: var(--preview-height);
-      overflow: hidden;
-      flex: 0 0 auto;
-      display: flex;
-      flex-direction: column;
-      margin: auto auto;
+      #preview_inner {
+        position: relative;
+        flex: 0 1 auto;
+        align-self: stretch;
+        justify-self: stretch;
+      }
 
-      background-image: var(--bg-pattern);
-      box-shadow: 0 0 0 2px var(--moderate-contrast);
-      border-radius: 0.5em;
-    }
+      #preview_contents {
+        overflow: hidden;
+        position: absolute;
+        --tt: 0.08s;
+        transition: top var(--tt), right var(--tt), bottom var(--tt),
+          left var(--tt), width var(--tt), height var(--tt);
+        transition-timing-function: ease-out;
+        box-shadow: inset 0 0 0 1px var(--moderate-contrast),
+          inset 0 0 0 2px var(--foreground);
+        background: var(--background-alt);
+        border-radius: 0.5em;
+      }
 
-    #preview_osx_bar {
-      --bg-color-1: hsla(0, 0%, 65%, 0.5);
-      background: linear-gradient(0, var(--bg-color-1) 0%, var(--bg-color-1) 100%), var(--background);
+      #preview_contents .menu_bar {
+        background: whitesmoke;
+        padding: 0.2em 0.6em;
+        box-shadow: 0 0 2.5px black;
+        display: flex;
+      }
 
-      box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.3), 0 0 1.5px 2px rgba(220, 220, 220, 0.7);
-    }
+      #preview_contents .dot {
+        font-size: 0.53em;
+        width: 1em;
+        height: 1em;
+        margin-right: 0.5em;
+        border-radius: 50%;
+        box-shadow: 0 0 1px rgba(0, 0, 0, 0.2);
 
-    #preview_inner {
-      position: relative;
-      flex: 0 1 auto;
-      align-self: stretch;
-      justify-self: stretch;
-    }
+        --red: #f53b3d;
+        --yellow: #f8b526;
+        --green: #29c332;
+      }
 
-    #preview_contents {
-      overflow: hidden;
-      position: absolute;
-      --tt: 0.08s;
-      transition: top var(--tt), right var(--tt), bottom var(--tt), left var(--tt), width var(--tt), height var(--tt);
-      transition-timing-function: ease-out;
-      box-shadow: inset 0 0 0 1px var(--moderate-contrast), inset 0 0 0 2px var(--foreground);
-      background: var(--background-alt);
-      border-radius: 0.5em;
-    }
+      #preview_contents .dot:nth-of-type(1) {
+        background-color: var(--red);
+      }
 
-    #preview_contents .menu_bar {
-      background: whitesmoke;
-      padding: 0.2em 0.6em;
-      box-shadow: 0 0 2.5px black;
-      display: flex;
-    }
+      #preview_contents .dot:nth-of-type(2) {
+        background-color: var(--yellow);
+      }
 
-    #preview_contents .dot {
-      font-size: 0.53em;
-      width: 1em;
-      height: 1em;
-      margin-right: 0.5em;
-      border-radius: 50%;
-      box-shadow: 0 0 1px rgba(0, 0, 0, 0.2);
+      #preview_contents .dot:nth-of-type(3) {
+        background-color: var(--green);
+      }
 
-      --red: #F53B3D;
-      --yellow: #F8B526;
-      --green: #29C332;
-    }
+      #form {
+        position: relative;
+      }
 
-    #preview_contents .dot:nth-of-type(1) {
-      background-color: var(--red);
-    }
+      #error {
+        position: absolute;
+        bottom: calc(100% + 2px);
+        right: 0;
+        background: var(--foreground);
+        color: var(--error-color);
+        line-height: 1.6;
+        padding: 0.2em 0.6em;
+      }
 
-    #preview_contents .dot:nth-of-type(2) {
-      background-color: var(--yellow);
-    }
+      .hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
 
-    #preview_contents .dot:nth-of-type(3) {
-      background-color: var(--green);
-    }
+      #popup {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        min-height: 4em;
+        min-width: 14em;
+        max-width: 92vw;
+        max-height: 92vh;
+        overflow-y: auto;
+        overflow-x: visible;
+        display: flex;
+        flex-direction: column;
+        background: var(--foreground);
+        color: var(--background);
+        padding: 0.6em;
+        box-shadow: 0 0 3px 1px var(--moderate-contrast);
+        border-radius: 3px;
+      }
 
-    #form {
-      position: relative;
-    }
+      dl,
+      dd,
+      dt {
+        font-family: 'Courier New', Courier, monospace;
+      }
 
-    #error {
-      position: absolute;
-      bottom: calc(100% + 2px);
-      right: 0;
-      background: var(--foreground);
-      color: var(--error-color);
-      line-height: 1.6;
-      padding: 0.2em 0.6em;
-    }
+      dt {
+        margin-top: 0.5em;
+        margin-bottom: 0.3em;
+      }
 
-    .hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
+      #popup .contents {
+        margin: auto;
+      }
 
-    #popup {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      min-height: 4em;
-      min-width: 14em;
-      max-width: 92vw;
-      max-height: 92vh;
-      overflow-y: auto;
-      overflow-x: visible;
-      display: flex;
-      flex-direction: column;
-      background: var(--foreground);
-      color: var(--background);
-      padding: 0.6em;
-      box-shadow: 0 0 3px 1px var(--moderate-contrast);
-      border-radius: 3px;
-    }
+      .uncaught {
+        font-size: 16px;
+        color: var(--error-color);
+        font-family: 'Courier New', Courier, monospace;
+        white-space: pre-wrap;
+        max-height: 14em;
+        overflow-y: auto;
+        overflow-x: visible;
+        width: 95%;
+        max-width: 32em;
+        padding: 0.6em;
+        box-shadow: inset 0 0 1px 2px black;
+        word-break: break-all;
+      }
 
-    dl, dd, dt {
-      font-family: 'Courier New', Courier, monospace;
-    }
+      a,
+      a:hover,
+      a:active,
+      a:focus {
+        color: var(--foreground-alt);
+      }
 
-    dt {
-      margin-top: 0.5em;
-      margin-bottom: 0.3em;
-    }
+      a:hover,
+      a:active,
+      a:focus {
+        text-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
+      }
 
-    #popup .contents {
-      margin: auto;
-    }
-
-    .uncaught {
-      font-size: 16px;
-      color: var(--error-color);
-      font-family: 'Courier New', Courier, monospace;
-      white-space: pre-wrap;
-      max-height: 14em;
-      overflow-y: auto;
-      overflow-x: visible;
-      width: 95%;
-      max-width: 32em;
-      padding: 0.6em;
-      box-shadow: inset 0 0 1px 2px black;
-      word-break: break-all;
-    }
-
-    a, a:hover, a:active, a:focus {
-      color: var(--foreground-alt);
-    }
-
-    a:hover, a:active, a:focus {
-      text-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
-    }
-
-    :root {
-      --bg-pattern: repeating-linear-gradient(45deg, transparent 1em, var(--background-stripe) 1em, var(--background-stripe) 1.3333em, transparent 1.3333em, transparent 2em);
-    }
-  </style>
-</body>
+      :root {
+        --bg-pattern: repeating-linear-gradient(
+          45deg,
+          transparent 1em,
+          var(--background-stripe) 1em,
+          var(--background-stripe) 1.3333em,
+          transparent 1.3333em,
+          transparent 2em
+        );
+      }
+    </style>
+  </body>
 </html>
