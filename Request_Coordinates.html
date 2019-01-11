@@ -161,15 +161,19 @@
 
         let screen = null;
 
-        window.addEventListener('error', (error) => {
+        window.addEventListener('error', (event) => {
           setTimeout(() => {
             let html = `Please report this error here https://git.io/fhLs1.<br>\n`;
             html += '<pre class="uncaught">';
 
-            if (error.error.stack) {
-              html += html_escape(String(error.error.stack));
+            if (event.error.stack) {
+              let s = String(event.error.stack);
+              if (!s.includes(event.error.message)) {
+                s = `${event.error.message}\n${s}`;
+              }
+              html += html_escape(s);
             } else {
-              html += html_escape(String(error.error));
+              html += html_escape(String(event.error));
             }
             html += '</pre>';
             setPopupHtml(html);
@@ -939,7 +943,7 @@
           }
 
           persistEphemeral() {
-            if (!this.isEphemeral) {
+            if (!this.isEphemeral && this.offset === 0) {
               return this;
             }
 
@@ -950,16 +954,12 @@
             const eph = this.ephermeral.get(this.offset);
             this.ephermeral.delete(this.offset);
 
-            if (!eph) {
-              // shouldn't happen
-              return;
-            }
-
-            // avoid the sequantial duplicates
-            const a = newest && newest.value === eph.value;
-            const b = current && current.value === eph.value;
-
-            if (!a && !b) {
+            if (!eph && newest && current.value !== newest.value) {
+              this.add(current.value);
+            } else if (eph) {
+              // avoid the sequantial duplicates
+              const a = newest && newest.value === eph.value;
+              const b = current && current.value === eph.value;
               this.add(eph.value);
             }
 
