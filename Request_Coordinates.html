@@ -9,7 +9,7 @@
   <!--
     TODO: these numbers are outdated. Update them.
 
-    The UI is fully responsive, but an aspect ratio of 1.55:1 works well. Sizes at 1/3 screen width:
+    The UI is fully responsive, but an aspect ratio of 1.55:1 works well. Sizes at 1/3 screen
 
     1080:
       <body data-kmwidth="640" data-kmheight="413">
@@ -211,12 +211,16 @@
               margin: {},
             };
 
-            screen.margin_top = window.KeyboardMaestro.Calculate(
-              'SCREENVISIBLE(Front, TOP)',
-            );
+            screen.margin_top =
+              window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, TOP)') -
+              window.KeyboardMaestro.Calculate('SCREEN(Front, TOP)');
             screen.margin_bottom =
               window.KeyboardMaestro.Calculate('SCREEN(Front, BOTTOM)') -
               window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, BOTTOM)');
+
+            setTimeout(() => {
+              setPopupHtml(html_escape(JSON.stringify(screen)));
+            }, 1000);
           } else {
             // emulate the screen size when not in KM
             // screen = { full_width: 1920, full_height: 1080 };
