@@ -19,6 +19,12 @@
   -->
   <body data-kmwidth="1120" data-kmheight="720">
     <style>
+      /* Configuration */
+      :root {
+        /* Number of history frames to persist in the KM variable */
+        --history-size: 40;
+      }
+
       /* Theme settings; modify as you like */
       :root {
         --background: #444;
@@ -224,6 +230,7 @@
           }
 
           inputHistory = new InputHistory(get_km_var('Coord_History'));
+
           $dbg.inputHistory = inputHistory;
 
           // Restore last executed value
@@ -274,8 +281,20 @@
             );
           }
 
+          saveState();
           update({});
           input.select();
+        };
+
+        // Keep track of any values we need between runs
+        const saveState = () => {
+          inputHistory.truncate(Number(getCssVar('--history-size')));
+          set_km_var(
+            'Coord_History',
+            JSON.stringify(
+              inputHistory.truncate(Number(getCssVar('--history-size'))),
+            ),
+          );
         };
 
         // Track variables in a Map so we can display them when not running inside KeyboardMaestro
@@ -295,10 +314,8 @@
 
           set_km_vars(coordinates);
 
-          set_km_var(
-            'Coord_History',
-            JSON.stringify(inputHistory.persistEphemeral().truncate(15)),
-          );
+          inputHistory.persistEphemeral();
+          saveState();
 
           if (window.KeyboardMaestro) {
             window.KeyboardMaestro.Submit('OK');
@@ -1030,6 +1047,13 @@
             .replace(/`/g, '&#96;');
 
         init();
+      }
+
+      // e.g. getCssVar('--some-var')
+      function getCssVar(propertyName, element = null) {
+        return getComputedStyle(
+          element || document.documentElement,
+        ).getPropertyValue(propertyName);
       }
     </script>
 
