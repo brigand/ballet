@@ -1,0 +1,8 @@
+{
+  "name": "ballet",
+  "version": "0.1.0",
+  "description": "interactively select coordinates for window repositioning",
+  "main": "index.js",
+  "author": "Frankie Bagnardi <f.bagnardi@gmail.com>",
+  "license": "MIT"
+}
