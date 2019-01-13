@@ -451,7 +451,10 @@
           while (!buf.is_end()) {
             const first = buf.take();
 
-            if (first === ' ') {
+            if (first === ' ' || first === 'm') {
+              // the 'm' means 'move', but just breaks a chain
+              // e.g. ijk is a top/bottom, where ijmk is a top inset followed by
+              // a down move
               continue;
             }
 
@@ -469,7 +472,7 @@
                 right: false,
                 down: false,
                 left: false,
-                count: 1,
+                count: 0,
               };
               opts[key] = true;
 
@@ -702,7 +705,7 @@
               const unit = screen_y_percent * screen.full_height;
 
               // This works out to opts.count=11 reducing us by 90% of the screen width
-              const pixels = unit * 1.54 ** opts.count;
+              const pixels = unit * 1.54 ** (opts.count + 1);
 
               if (is_move) {
                 coordinates = move_coordinates(
