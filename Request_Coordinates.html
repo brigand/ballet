@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <title>Select Window Coordinates</title>
@@ -51,15 +51,16 @@
         --background-alt: #232935;
         --foreground-alt: #9ad7e9;
         --foreground-alt-muted: #a1bdc6;
-        --moderate-contrast: rgba(164, 164, 164, 0.5);
+        --moderate-contrast: rgba(40, 150, 150, 0.8);
         --error-color: #ff80ab;
+        --placeholder: var(--moderate-contrast);
       }
 
       /* Light theme, inherits from above */
       [data-theme='light'] {
         --background: #f8f8f8;
         --background-stripe: hsl(244, 17.7%, 81%);
-        --moderate-contrast: rgba(100, 100, 100, 0.5);
+        --moderate-contrast: rgba(0, 100, 100, 0.8);
         --foreground: #444444;
         --background-alt: #7bc2de;
         --foreground-alt: #8f89e4;
@@ -244,10 +245,6 @@
             screen.margin_bottom =
               window.KeyboardMaestro.Calculate('SCREEN(Front, BOTTOM)') -
               window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, BOTTOM)');
-
-            setTimeout(() => {
-              setPopupHtml(html_escape(JSON.stringify(screen)));
-            }, 1000);
           } else {
             // emulate the screen size when not in KM
             // screen = { full_width: 1920, full_height: 1080 };
@@ -1315,7 +1312,7 @@
       }
 
       #main-input::-webkit-input-placeholder {
-        color: var(--moderate-contrast);
+        color: var(--placeholder);
       }
 
       #buttons {
