@@ -440,16 +440,86 @@
               continue;
             }
 
-            if (first === 'i') {
-              ops.push(['Inset', true]);
+            const DIR_MAP = new Map([
+              ['h', 'left'],
+              ['j', 'down'],
+              ['k', 'up'],
+              ['l', 'right'],
+            ]);
+
+            if (DIR_MAP.has(first)) {
+              const key = DIR_MAP.get(first);
+              const opts = {
+                up: false,
+                right: false,
+                down: false,
+                left: false,
+                count: 1,
+              };
+              opts[key] = true;
+
+              do {
+                opts.count += 1;
+              } while (buf.take_match(first));
+
+              ops.push(['Move', opts]);
               continue;
             }
 
-            if (first === 'I') {
-              ops.push(['Outset', true]);
+            if (first === 'i' || first === 'I') {
+              let any_directional = false;
+              const data = {
+                up: null,
+                right: null,
+                down: null,
+                left: null,
+                count: 1,
+              };
+
+              while (true) {
+                if (!any_directional && first === 'i' && buf.take_match('i')) {
+                  data.count += 1;
+                } else if (
+                  !any_directional &&
+                  first === 'I' &&
+                  buf.take_match('I')
+                ) {
+                  data.count += 1;
+                } else if (DIR_MAP.has(buf.peek_at())) {
+                  any_directional = true;
+
+                  const key = DIR_MAP.get(buf.take());
+                  if (data[key]) {
+                    data.count += 1;
+                  } else {
+                    data[key] = true;
+                  }
+                } else {
+                  break;
+                }
+              }
+
+              if (data.up == null) {
+                data.up = !any_directional;
+              }
+              if (data.right == null) {
+                data.right = !any_directional;
+              }
+              if (data.down == null) {
+                data.down = !any_directional;
+              }
+              if (data.left == null) {
+                data.left = !any_directional;
+              }
+
+              if (first === 'i') {
+                ops.push(['Inset', data]);
+              } else {
+                ops.push(['Outset', data]);
+              }
+
               continue;
             }
-
             if (first === 'a' || first === 'A') {
               const dir = first === 'a' ? 'AspectShrink' : 'AspectGrow';
               let w = null;
@@ -604,24 +674,34 @@
           }
 
           while (!buf.is_end()) {
-            if (buf.peek_type() === 'Inset') {
-              let count = 0;
-              while (buf.peek_type() === 'Inset') {
-                buf.take();
-                count += 1;
-              }
+            const is_inset = buf.peek_type() === 'Inset';
+            const is_outset = buf.peek_type() === 'Outset';
+            const is_move = buf.peek_type() === 'Move';
+            if (is_inset || is_outset || is_move) {
+              const opts = buf.take_value();
 
               // If you want to play with the base or exponent... in python:
               //   >>> b = 20.0; exp = 2; [int(b * exp ** i) for i in range(0, 5)]
               //   [20, 40, 80, 160, 320]
               const screen_y_percent = 20 / 1080;
               const unit = screen_y_percent * screen.full_height;
-              const pixels = unit * 2 ** count;
 
-              coordinates = inset_coordinates(
-                coordinates,
-                ...pixels_to_percent(pixels),
-              );
+              // This works out to opts.count=11 reducing us by 90% of the screen width
+              const pixels = unit * 1.54 ** opts.count;
+
+              if (is_move) {
+                coordinates = move_coordinates(
+                  opts,
+                  coordinates,
+                  ...pixels_to_percent(pixels),
+                );
+              } else {
+                coordinates = grow_coordinates(
+                  { ...opts, scale: is_inset ? -1 : 1 },
+                  coordinates,
+                  ...pixels_to_percent(pixels),
+                );
+              }
             } else if (buf.peek_type() === 'Rotate') {
               const deg = buf.take_value();
 
@@ -681,10 +761,64 @@
           return [nx, ny];
         };
 
-        const inset_coordinates = (coords, x_percent, y_percent) => {
+        const cond_map = (cond, value, mapper) => {
+          if (cond) {
+            return mapper(value);
+          }
+          return value;
+        };
+
+        const move_coordinates = (opts, coords, x_percent, y_percent) => {
+          let scale_left = 0;
+          let scale_top = 0;
+          let scale_right = 0;
+          let scale_bottom = 0;
+
+          if (opts.left) {
+            scale_left = -1;
+            scale_right = -1;
+          }
+
+          if (opts.right) {
+            scale_left = 1;
+            scale_right = 1;
+          }
+          if (opts.up) {
+            scale_top = -1;
+            scale_bottom = -1;
+          }
+          if (opts.down) {
+            scale_top = 1;
+            scale_bottom = 1;
+          }
+
           return [
-            [coords[0][0] + x_percent, coords[0][1] + y_percent],
-            [coords[1][0] - x_percent, coords[1][1] - y_percent],
+            [
+              coords[0][0] + x_percent * scale_left,
+              coords[0][1] + y_percent * scale_top,
+            ],
+            [
+              coords[1][0] + x_percent * scale_right,
+              coords[1][1] + y_percent * scale_bottom,
+            ],
+          ];
+        };
+
+        const grow_coordinates = (opts, coords, x_percent, y_percent) => {
+          if (typeof opts.scale === 'number') {
+            x_percent *= opts.scale;
+            y_percent *= opts.scale;
+          }
+
+          return [
+            [
+              cond_map(opts.left, coords[0][0], (v) => v - x_percent),
+              cond_map(opts.up, coords[0][1], (v) => v - y_percent),
+            ],
+            [
+              cond_map(opts.right, coords[1][0], (v) => v + x_percent),
+              cond_map(opts.down, coords[1][1], (v) => v + y_percent),
+            ],
           ];
         };
 
@@ -707,8 +841,8 @@
           }
 
           /* With two numbers, copy the offset from the top left to the bottom right,
-           resulting in a centered output.
-        */
+                       resulting in a centered output.
+                    */
           if (count === 2) {
             return [
               [scale_number(items[0]), scale_number(items[1])],
@@ -720,9 +854,9 @@
           }
 
           /*
-          We're missing y2, so just default y2 to 1-y1.
-          TODO: is this really the most sensible option?
-        */
+                      We're missing y2, so just default y2 to 1-y1.
+                      TODO: is this really the most sensible option?
+                    */
           if (count === 3) {
             return [
               [scale_number(items[0]), scale_number(items[1])],
@@ -875,6 +1009,16 @@
 
           take(count = 1) {
             return super.take(count).join('');
+          }
+
+          take_match(chars) {
+            const count = chars.length;
+
+            if (this.peek_n(count) === chars) {
+              return super.take(count).join('');
+            }
+
+            return null;
           }
 
           peek_n(count = 1) {
@@ -1069,13 +1213,13 @@
             .replace(/`/g, '&#96;');
 
         init();
-      }
 
-      // e.g. getCssVar('--some-var')
-      function getCssVar(propertyName, element = null) {
-        return getComputedStyle(
-          element || document.documentElement,
-        ).getPropertyValue(propertyName);
+        // e.g. getCssVar('--some-var')
+        function getCssVar(propertyName, element = null) {
+          return getComputedStyle(
+            element || document.documentElement,
+          ).getPropertyValue(propertyName);
+        }
       }
     </script>
 
