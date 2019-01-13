@@ -153,6 +153,10 @@
             <div class="dot"></div>
           </div>
         </div>
+        <pline class="preview_overflow hidden"></pline>
+        <pline class="preview_overflow hidden"></pline>
+        <pline class="preview_overflow hidden"></pline>
+        <pline class="preview_overflow hidden"></pline>
       </div>
     </section>
     <form id="form">
@@ -182,6 +186,12 @@
         const popup = document.querySelector('#popup');
         const popup_contents = document.querySelector('#popup .contents');
         const preview_contents = document.querySelector('#preview_contents');
+        const preview_overflows = [
+          document.querySelector('.preview_overflow'),
+          document.querySelector('.preview_overflow:nth-of-type(2)'),
+          document.querySelector('.preview_overflow:nth-of-type(3)'),
+          document.querySelector('.preview_overflow:nth-of-type(4)'),
+        ];
 
         let screen = null;
 
@@ -414,7 +424,15 @@
           if (ops && !error) {
             // You can uncomment this to see how the input gets parsed.
             // console.log(success.map(x => x.debug()).join('\n'));
-            const coordinates = parsed_to_coordinates(ops);
+            let coordinates = parsed_to_coordinates(ops);
+
+            const overflow = check_coord_overflow(coordinates);
+            preview_overflows[0].classList.toggle('hidden', !overflow.top);
+            preview_overflows[1].classList.toggle('hidden', !overflow.right);
+            preview_overflows[2].classList.toggle('hidden', !overflow.bottom);
+            preview_overflows[3].classList.toggle('hidden', !overflow.left);
+
+            coordinates = constrain_coords(coordinates);
 
             preview_contents.style.opacity = '1';
             preview_contents.style.left = coordinates[0][0] * 100 + '%';
@@ -802,6 +820,44 @@
               coords[1][1] + y_percent * scale_bottom,
             ],
           ];
+        };
+
+        const check_coord_overflow = (coords) => {
+          let top = false;
+          let right = false;
+          let bottom = false;
+          let left = false;
+
+          if (coords[0][0] < 0) {
+            left = true;
+          }
+
+          if (coords[1][0] > 1) {
+            right = true;
+          }
+
+          if (coords[0][1] < 0) {
+            top = true;
+          }
+          if (coords[1][1] > 1) {
+            bottom = true;
+          }
+
+          return {
+            top,
+            right,
+            bottom,
+            left,
+            any: top || right || bottom || left,
+          };
+        };
+
+        const constrain_coords = (coords) => {
+          const xs = [...coords[0], ...coords[1]].map((x) =>
+            Math.max(0, Math.min(1, x)),
+          );
+
+          return [[xs.shift(), xs.shift()], [xs.shift(), xs.shift()]];
         };
 
         const grow_coordinates = (opts, coords, x_percent, y_percent) => {
@@ -1357,6 +1413,51 @@
 
       #preview_contents .dot:nth-of-type(3) {
         background-color: var(--green);
+      }
+
+      .preview_overflow {
+        --margin: 1.6em;
+
+        width: 3px;
+        height: 3px;
+        position: absolute;
+        background: #cc2244;
+        box-shadow: inset 0 0 0 3px var(--color), 0 0 3px 1px #990024;
+        pointer-events: none;
+        transition: opacity 0.15s;
+        z-index: 100;
+      }
+
+      .preview_overflow:nth-of-type(1) {
+        /* top */
+        top: 0;
+        left: var(--margin);
+        right: var(--margin);
+        width: auto;
+      }
+
+      .preview_overflow:nth-of-type(2) {
+        /* right */
+        top: var(--margin);
+        bottom: var(--margin);
+        right: 0;
+        height: auto;
+      }
+
+      .preview_overflow:nth-of-type(3) {
+        /* bottom */
+        bottom: 0;
+        left: var(--margin);
+        right: var(--margin);
+        width: auto;
+      }
+
+      .preview_overflow:nth-of-type(4) {
+        /* left */
+        top: var(--margin);
+        bottom: var(--margin);
+        left: 0;
+        height: auto;
       }
 
       #form {
