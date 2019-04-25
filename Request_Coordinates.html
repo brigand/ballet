@@ -731,15 +731,9 @@
             } else {
               throw new Error(`Unexpected token ${buf.take(1)}`);
             }
-
-            // TODO: implemnt SquareShort: reduce the long side until the screen pixels are a square
-            // TODO: implemnt SquareLong: expand the short side until the screen pixels are a square
           }
 
           return coordinates;
-          // TODO: implement inset
-          // TODO: implement rotate
-          // TODO: implement flip
         };
 
         const rotate_coordinates_percent = (coords, deg) => {
