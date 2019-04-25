@@ -30,17 +30,21 @@ top 1, right 1, bottom 1) and `1 2` is `1 2 1 2`.
 If you want the window to be centered, you'll only need to specify 1 or 2
 digits.
 
+For example "1 2 3 4" would take the first line from the left of this table, the
+top line of the second cell from the top, right line of the third right-most
+cell, and fourth line from the bottom of the table.
+
 | []() | []() | []() | []() | []() | []() | []() | []() |
 | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
-| \_   | \_   | \_   | \_   | \_   | \_   | \_   | \_   |
-| \_   | \_   | \_   | \_   | \_   | \_   | \_   | \_   |
-| \_   | \_   | \_   | \_   | \_   | \_   | \_   | \_   |
-| \_   | \_   | \_   | \_   | \_   | \_   | \_   | \_   |
-| \_   | \_   | \_   | \_   | \_   | \_   | \_   | \_   |
-| \_   | \_   | \_   | \_   | \_   | \_   | \_   | \_   |
-| \_   | \_   | \_   | \_   | \_   | \_   | \_   | \_   |
-| \_   | \_   | \_   | \_   | \_   | \_   | \_   | \_   |
-| \_   | \_   | \_   | \_   | \_   | \_   | \_   | \_   |
+|  _   |  _   |  _   |  _   |  _   |  _   |  _   |  _   |
+|  ◉   |  ◉   |  ◉   |  ◉   |  ◉   |  ◉   |  _   |  _   |
+|  ◉   |  ◉   |  ◉   |  ◉   |  ◉   |  ◉   |  _   |  _   |
+|  ◉   |  ◉   |  ◉   |  ◉   |  ◉   |  ◉   |  _   |  _   |
+|  ◉   |  ◉   |  ◉   |  ◉   |  ◉   |  ◉   |  _   |  _   |
+|  ◉   |  ◉   |  ◉   |  ◉   |  ◉   |  ◉   |  _   |  _   |
+|  _   |  _   |  _   |  _   |  _   |  _   |  _   |  _   |
+|  _   |  _   |  _   |  _   |  _   |  _   |  _   |  _   |
+|  _   |  _   |  _   |  _   |  _   |  _   |  _   |  _   |
 
 If you enter no text, it defaults to "1" (maximized).
 
