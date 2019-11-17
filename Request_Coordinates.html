@@ -219,7 +219,10 @@
 
         const init = () => {
           // Clear out the variables
-          set_km_vars([[null, null], [null, null]]);
+          set_km_vars([
+            [null, null],
+            [null, null],
+          ]);
 
           // TODO: implement side margins, for side positioned docks
           if (window.KeyboardMaestro) {
@@ -237,6 +240,7 @@
                 'SCREEN(Front, HEIGHT)',
               ),
               margin: {},
+              aspect: null,
             };
 
             screen.margin_top =
@@ -257,6 +261,8 @@
             screen.height =
               screen.full_height - screen.margin_top - screen.margin_bottom;
           }
+
+          screen.aspect = screen.width / screen.height;
 
           inputHistory = new InputHistory(get_km_var('Coord_History'));
 
@@ -538,6 +544,15 @@
 
               continue;
             }
+
+            // 'x' for exclude previous rectangle
+            // e.g. 1/2x would be 2/2
+            // e.g. 3111x would be 1161
+            if (first === 'x') {
+              ops.push(['Exclude', true]);
+              continue;
+            }
+
             if (first === 'a' || first === 'A') {
               const dir = first === 'a' ? 'AspectShrink' : 'AspectGrow';
               let w = null;
@@ -695,6 +710,7 @@
             const is_inset = buf.peek_type() === 'Inset';
             const is_outset = buf.peek_type() === 'Outset';
             const is_move = buf.peek_type() === 'Move';
+
             if (is_inset || is_outset || is_move) {
               const opts = buf.take_value();
 
@@ -728,6 +744,8 @@
               coordinates = flip_coordinates_x(coordinates);
             } else if (buf.take_value('FlipY')) {
               coordinates = flip_coordinates_y(coordinates);
+            } else if (buf.take_value('Exclude')) {
+              coordinates = exclude_coordinates(coordinates);
             } else {
               throw new Error(`Unexpected token ${buf.take(1)}`);
             }
@@ -739,15 +757,63 @@
         const rotate_coordinates_percent = (coords, deg) => {
           const [x1, y1] = rotate(0.5, 0.5, coords[0][0], coords[0][1], -deg);
           const [x2, y2] = rotate(0.5, 0.5, coords[1][0], coords[1][1], -deg);
-          return normalize_coords([[x1, y1], [x2, y2]]);
+          return normalize_coords([
+            [x1, y1],
+            [x2, y2],
+          ]);
         };
 
         const flip_coordinates_x = ([[x1, y1], [x2, y2]]) => {
-          return normalize_coords([[1 - x2, y1], [1 - x1, y2]]);
+          return normalize_coords([
+            [1 - x2, y1],
+            [1 - x1, y2],
+          ]);
         };
 
         const flip_coordinates_y = ([[x1, y1], [x2, y2]]) => {
-          return normalize_coords([[x1, 1 - y2], [x2, 1 - y1]]);
+          return normalize_coords([
+            [x1, 1 - y2],
+            [x2, 1 - y1],
+          ]);
+        };
+
+        const get_comparable_rect_area_screen = ([[x1, y1], [x2, y2]]) => {
+          const width = x2 * screen.aspect - x1 * screen.aspect;
+          const height = y2 - y1;
+          return width * height;
+        };
+
+        const exclude_coordinates = ([[x1, y1], [x2, y2]]) => {
+          const options = [
+            [
+              [0, 0],
+              [1, y1],
+            ],
+            [
+              [0, y2],
+              [1, 1],
+            ],
+            [
+              [0, 0],
+              [x1, 1],
+            ],
+            [
+              [x2, 0],
+              [1, 1],
+            ],
+          ];
+
+          let maxArea = -Infinity;
+          let maxItem = null;
+          for (const option of options) {
+            const area = get_comparable_rect_area_screen(option);
+            if (area > maxArea) {
+              maxArea = area;
+              maxItem = option;
+            }
+          }
+
+          return maxItem;
         };
 
         const normalize_coords = (coords) => {
@@ -851,7 +917,10 @@
             Math.max(0, Math.min(1, x)),
           );
 
-          return [[xs.shift(), xs.shift()], [xs.shift(), xs.shift()]];
+          return [
+            [xs.shift(), xs.shift()],
+            [xs.shift(), xs.shift()],
+          ];
         };
 
         const grow_coordinates = (opts, coords, x_percent, y_percent) => {
@@ -969,7 +1038,10 @@
           const index = (num - 1) % values.length;
           const [x1, y1, x2, y2] = values[index];
 
-          let coords = [[x1, y1], [x2, y2]];
+          let coords = [
+            [x1, y1],
+            [x2, y2],
+          ];
 
           // 3/2 is short for 1/2R
           const excess = Math.floor((num - 1) / denom);
