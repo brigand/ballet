@@ -217,110 +217,6 @@
 
         let inputHistory;
 
-        const init = () => {
-          // Clear out the variables
-          set_km_vars([
-            [null, null],
-            [null, null],
-          ]);
-
-          // TODO: implement side margins, for side positioned docks
-          if (window.KeyboardMaestro) {
-            screen = {
-              width: window.KeyboardMaestro.Calculate(
-                'SCREENVISIBLE(Front, WIDTH)',
-              ),
-              height: window.KeyboardMaestro.Calculate(
-                'SCREENVISIBLE(Front, HEIGHT)',
-              ),
-              full_width: window.KeyboardMaestro.Calculate(
-                'SCREEN(Front, WIDTH)',
-              ),
-              full_height: window.KeyboardMaestro.Calculate(
-                'SCREEN(Front, HEIGHT)',
-              ),
-              margin: {},
-              aspect: null,
-            };
-
-            screen.margin_top =
-              window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, TOP)') -
-              window.KeyboardMaestro.Calculate('SCREEN(Front, TOP)');
-            screen.margin_bottom =
-              window.KeyboardMaestro.Calculate('SCREEN(Front, BOTTOM)') -
-              window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, BOTTOM)');
-          } else {
-            // emulate the screen size when not in KM
-            // screen = { full_width: 1920, full_height: 1080 };
-            screen = { full_width: 2560, full_height: 1440 };
-            // screen = { full_width: 3840, full_height: 2160 };
-
-            screen.margin_top = 20;
-            screen.margin_bottom = 0;
-            screen.width = screen.full_width;
-            screen.height =
-              screen.full_height - screen.margin_top - screen.margin_bottom;
-          }
-
-          screen.aspect = screen.width / screen.height;
-
-          inputHistory = new InputHistory(get_km_var('Coord_History'));
-
-          $dbg.inputHistory = inputHistory;
-
-          // Restore last executed value
-          const last = inputHistory.get();
-          if (last) {
-            input.value = last.value;
-          }
-
-          input.addEventListener(
-            'input',
-            () => {
-              update({});
-            },
-            false,
-          );
-
-          input.addEventListener(
-            'keydown',
-            (event) => {
-              if (event.key === 'ArrowUp') {
-                const item = inputHistory.goBack().get();
-                input.value = item.value;
-                update({});
-              } else if (event.key === 'ArrowDown') {
-                const item = inputHistory.goForward().get();
-                input.value = item.value;
-                update({});
-              }
-            },
-            false,
-          );
-
-          {
-            // We can't use margins because they'd be percentags of width
-            const mt_p = screen.margin_top / screen.full_height;
-            const mb_p = screen.margin_bottom / screen.full_height;
-            const both = mt_p + mb_p;
-            preview_inner.style.position = 'relative';
-            preview_inner.style.height = (1 - both) * 100 + '%';
-            preview_osx_bar.style.height = mt_p * 100 + '%';
-
-            // Let's make sure we have the right aspect ratio; otherwise things won't work correctly.
-            const full_aspect = screen.full_width / screen.full_height;
-
-            document.documentElement.style.setProperty(
-              '--screen-aspect',
-              full_aspect,
-            );
-          }
-
-          saveState();
-          update({});
-          input.select();
-        };
-
         // Keep track of any values we need between runs
         const saveState = () => {
           inputHistory.truncate(Number(getCssVar('--history-size')));
@@ -337,7 +233,10 @@
 
         form.addEventListener('submit', (event) => {
           event.preventDefault();
+          submit();
+        });
 
+        const submit = () => {
           const { coordinates, error } = update();
 
           if (error) {
@@ -367,7 +266,7 @@
 
             setPopupHtml(html);
           }
-        });
+        };
 
         const setPopupHtml = (html) => {
           if (html) {
@@ -1334,13 +1233,131 @@
             .replace(/'/g, '&#39;')
             .replace(/`/g, '&#96;');
 
-        init();
-
         // e.g. getCssVar('--some-var')
         function getCssVar(propertyName, element = null) {
           return getComputedStyle(
             element || document.documentElement,
           ).getPropertyValue(propertyName);
+        }
+
+        // Init code
+
+        {
+          // Clear out the variables
+          set_km_vars([
+            [null, null],
+            [null, null],
+          ]);
+
+          // TODO: implement side margins, for side positioned docks
+          if (window.KeyboardMaestro) {
+            screen = {
+              width: window.KeyboardMaestro.Calculate(
+                'SCREENVISIBLE(Front, WIDTH)',
+              ),
+              height: window.KeyboardMaestro.Calculate(
+                'SCREENVISIBLE(Front, HEIGHT)',
+              ),
+              full_width: window.KeyboardMaestro.Calculate(
+                'SCREEN(Front, WIDTH)',
+              ),
+              full_height: window.KeyboardMaestro.Calculate(
+                'SCREEN(Front, HEIGHT)',
+              ),
+              margin: {},
+              aspect: null,
+            };
+
+            screen.margin_top =
+              window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, TOP)') -
+              window.KeyboardMaestro.Calculate('SCREEN(Front, TOP)');
+            screen.margin_bottom =
+              window.KeyboardMaestro.Calculate('SCREEN(Front, BOTTOM)') -
+              window.KeyboardMaestro.Calculate('SCREENVISIBLE(Front, BOTTOM)');
+          } else {
+            // emulate the screen size when not in KM
+            // screen = { full_width: 1920, full_height: 1080 };
+            screen = { full_width: 2560, full_height: 1440 };
+            // screen = { full_width: 3840, full_height: 2160 };
+
+            screen.margin_top = 20;
+            screen.margin_bottom = 0;
+            screen.width = screen.full_width;
+            screen.height =
+              screen.full_height - screen.margin_top - screen.margin_bottom;
+          }
+
+          screen.aspect = screen.width / screen.height;
+
+          inputHistory = new InputHistory(get_km_var('Coord_History'));
+
+          $dbg.inputHistory = inputHistory;
+
+          // Restore last executed value
+          const last = inputHistory.get();
+          if (last) {
+            input.value = last.value;
+          }
+
+          input.addEventListener(
+            'input',
+            () => {
+              update({});
+            },
+            false,
+          );
+
+          input.addEventListener(
+            'keydown',
+            (event) => {
+              if (event.key === 'ArrowUp') {
+                const item = inputHistory.goBack().get();
+                input.value = item.value;
+                update({});
+              } else if (event.key === 'ArrowDown') {
+                const item = inputHistory.goForward().get();
+                input.value = item.value;
+                update({});
+              }
+            },
+            false,
+          );
+
+          {
+            // We can't use margins because they'd be percentags of width
+            const mt_p = screen.margin_top / screen.full_height;
+            const mb_p = screen.margin_bottom / screen.full_height;
+            const both = mt_p + mb_p;
+            preview_inner.style.position = 'relative';
+            preview_inner.style.height = (1 - both) * 100 + '%';
+            preview_osx_bar.style.height = mt_p * 100 + '%';
+
+            // Let's make sure we have the right aspect ratio; otherwise things won't work correctly.
+            const full_aspect = screen.full_width / screen.full_height;
+
+            document.documentElement.style.setProperty(
+              '--screen-aspect',
+              full_aspect,
+            );
+          }
+
+          {
+            const triger_value = get_km_var('Local_TriggerValue') || '';
+
+            const triger_match = triger_value.match(
+              /\s*coordinates_for:\s*(.*?)\s*$/,
+            );
+
+            if (triger_match) {
+              input.value = triger_match[1];
+
+              submit();
+            } else {
+              saveState();
+              update({});
+              input.select();
+            }
+          }
         }
       }
     </script>
