@@ -256,22 +256,28 @@
           if (!window.KeyboardMaestro) {
             return screen_name;
           }
-          let screen_count = km_calc_number('SCREENCOUNT()');
-          screen_count = parseInt(screen_count, 10);
+
+          const screen_count = km_calc_number('SCREENCOUNT()');
 
           if (screen_name === 'Front' || screen_name === 'Main') {
             return screen_name;
           }
 
-          const screens_left_to_right = Array.from(
-            { length: screen_count },
-            (_, i) => {
+          const screens_left_to_right = [];
+          const seen_indexes = new Set();
+          for (let i = 0; i < 12; i += 1) {
+            const real_index = km_calc_number(`SCREEN(${i}, Index)`);
+            if (!seen_indexes.has(real_index) && i === real_index) {
+              seen_indexes.add(real_index);
               const left = km_calc_number(`SCREEN(${i}, Left)`);
-              return { id: i, left };
-            },
-          ).sort((a, b) => a.left - b.left);
+              screens_left_to_right.push({ id: i, left });
+            }
+          }
+          screens_left_to_right.sort((a, b) => a.left - b.left);
 
           const ids = screens_left_to_right.map((item) => item.id);
+
+          set_km_var('temp_screen_name', JSON.stringify(ids));
           if (Number.isFinite(screen_name)) {
             const index = screen_name - 1;
             return index >= ids.length ? ids.slice(-1)[0] : ids[index];
@@ -283,7 +289,7 @@
             case 'Center':
               return ids[Math.floor(ids.length / 2)];
             case 'Right':
-              return ids.slice(-1)[0].id;
+              return ids.slice(-1)[0];
           }
 
           return ids[0];
@@ -363,20 +369,6 @@
         const submit = () => {
           const { coordinates, error, absolute } = update();
 
-          set_km_var(
-            'temp_screen_name',
-            JSON.stringify(
-              {
-                top: screen.top,
-                left: screen.left,
-                width: screen.width,
-                height: screen.height,
-              },
-              null,
-              2,
-            ),
-          );
-
           if (error) {
             alert(
               `The input is invalid.\nPlease correct it or press Escape to quit:\n\n${error}`,
@@ -384,7 +376,6 @@
             return;
           }
 
-          console.log({ absolute });
           set_km_vars(absolute);
 
           inputHistory.persistEphemeral();
