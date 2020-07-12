@@ -71,14 +71,18 @@
       :root {
         /* We override this later in the JS, so just using a reasonable default for now */
         --screen-aspect: calc(16 / 9);
+        --screen-scale: 1;
+        --screen-scale-percent: calc(var(--screen-scale) * 100%);
 
         /* our base is 600px wide viewport -> 16px font, so that's a scale of 37.5 */
         --font-scale: 37.5;
 
         /* We want the preview to maintain a 16:10 aspect ratio */
         --preview-space: calc(100vmin - 3em);
-        --preview-width: var(--preview-space);
-        --preview-height: calc(var(--preview-space) / var(--screen-aspect));
+        --preview-width: calc(var(--preview-space) / var(--screen-scale));
+        --preview-height: calc(
+          var(--preview-space) / var(--screen-aspect) / var(--screen-scale)
+        );
 
         --input-scale: 2.2;
       }
@@ -87,9 +91,10 @@
       @media screen and (min-aspect-ratio: 200/135) {
         :root {
           --preview-space: calc(100vh - 6.4em);
-          --preview-height: var(--preview-space);
+          --preview-height: calc(var(--preview-space) / var(--screen-scale));
           --preview-width: calc(
-            var(--preview-space) / (1 / var(--screen-aspect))
+            var(--preview-space) / (1 / var(--screen-aspect)) /
+              var(--screen-scale)
           );
         }
       }
@@ -240,9 +245,18 @@
           // Let's make sure we have the right aspect ratio; otherwise things won't work correctly.
           const full_aspect = screen.full_width / screen.full_height;
 
+          const baseAspect = 16 / 9;
           document.documentElement.style.setProperty(
             '--screen-aspect',
             full_aspect,
+          );
+          let screen_scale =
+            full_aspect > baseAspect
+              ? full_aspect / baseAspect
+              : baseAspect / full_aspect;
+          document.documentElement.style.setProperty(
+            '--screen-scale',
+            screen_scale.toFixed(6),
           );
         };
 
